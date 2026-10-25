@@ -1,0 +1,12 @@
+[
+  {
+    "guid": "52153ac0-2dcf-4319-a322-9c9415665d48",
+    "name": "Bulk Metadata Editor",
+    "description": "Find items across every library and bulk edit genres, tags, studios, ratings, titles, sort titles, years, dates, provider ids and field locks — with preview, undo, a genre/tag manager and CSV export/import.",
+    "overview": "Bulk edit metadata across all of your libraries",
+    "owner": "justhallwest-commits",
+    "category": "Metadata",
+    "imageUrl": "",
+    "versions": []
+  }
+]

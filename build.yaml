@@ -1,0 +1,17 @@
+---
+name: "Bulk Metadata Editor"
+guid: "52153ac0-2dcf-4319-a322-9c9415665d48"
+version: "1.0.0.0"
+targetAbi: "10.10.0.0"
+framework: "net8.0"
+owner: "justhallwest-commits"
+overview: "Bulk edit metadata across all of your libraries"
+description: >
+  Find items across every library with powerful filters and bulk edit genres, tags, studios,
+  parental ratings, titles, sort titles, years, dates, provider ids and field locks. Every change
+  is previewed first, logged, and can be undone. Includes a genre/tag manager and CSV export/import.
+category: "Metadata"
+artifacts:
+  - "Jellyfin.Plugin.BulkMetadata.dll"
+changelog: >
+  Initial release.

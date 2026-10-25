@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bulk Metadata Editor</title>
+</head>
+<body>
+<div id="BulkMetadataPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-input,emby-checkbox,emby-select">
+<div data-role="content">
+<div class="content-primary bme">
+
+<style>
+.bme{--a:#00a4dc;--a2:#33b8e6;--ok:#4caf50;--bad:#e5534b;--warn:#e0a526;--line:rgba(127,127,127,.22);--panel:rgba(127,127,127,.08);--panel2:rgba(127,127,127,.14);--mut:rgba(127,127,127,1);max-width:1400px;margin:0 auto;padding-bottom:6em;font-size:14px;line-height:1.45}
+.bme *{box-sizing:border-box}
+.bme h2{margin:0;font-size:1.6em;font-weight:600}
+.bme h3{margin:0 0 .6em;font-size:1.1em;font-weight:600}
+.bme .muted{color:var(--mut);opacity:.95}
+.bme .small{font-size:.86em}
+.bme-head{display:flex;align-items:center;gap:1em;flex-wrap:wrap;margin:1em 0 1.2em}
+.bme-head .ver{font-size:.8em;padding:.15em .55em;border:1px solid var(--line);border-radius:999px}
+.bme-jobpill{margin-left:auto;display:none;align-items:center;gap:.5em;background:var(--panel2);border-radius:999px;padding:.35em .9em;cursor:pointer}
+.bme-jobpill.on{display:flex}
+.bme-dot{width:.6em;height:.6em;border-radius:50%;background:var(--a);animation:bmepulse 1s infinite alternate}
+@keyframes bmepulse{from{opacity:.3}to{opacity:1}}
+.bme-tabs{display:flex;gap:.25em;border-bottom:1px solid var(--line);margin-bottom:1.2em;overflow-x:auto}
+.bme-tab{background:none;border:0;color:inherit;font:inherit;padding:.75em 1.1em;cursor:pointer;border-bottom:3px solid transparent;opacity:.75;white-space:nowrap}
+.bme-tab:hover{opacity:1}
+.bme-tab.on{opacity:1;border-bottom-color:var(--a);font-weight:600}
+.bme-tab .n{display:inline-block;min-width:1.6em;padding:0 .4em;margin-left:.35em;border-radius:999px;background:var(--a);color:#fff;font-size:.78em;text-align:center}
+.bme-panel{display:none}.bme-panel.on{display:block}
+.bme-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.1em 1.2em;margin-bottom:1em}
+.bme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.9em 1em}
+.bme-row{display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
+.bme label.lbl{display:block;font-size:.82em;margin-bottom:.3em;opacity:.8;font-weight:600;letter-spacing:.02em}
+.bme input[type=text],.bme input[type=number],.bme input[type=date],.bme select,.bme textarea{width:100%;font:inherit;color:inherit;background:rgba(127,127,127,.12);border:1px solid var(--line);border-radius:6px;padding:.55em .7em;outline:none}
+.bme select option{color:#000}
+.bme input:focus,.bme select:focus,.bme textarea:focus{border-color:var(--a);box-shadow:0 0 0 2px rgba(0,164,220,.25)}
+.bme textarea{min-height:5em;resize:vertical}
+.bme .btn{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:inherit;padding:.55em 1em;display:inline-flex;align-items:center;gap:.4em;white-space:nowrap}
+.bme .btn:hover{border-color:var(--a)}
+.bme .btn:disabled{opacity:.45;cursor:not-allowed}
+.bme .btn.pri{background:var(--a);border-color:var(--a);color:#fff;font-weight:600}
+.bme .btn.pri:hover{background:var(--a2)}
+.bme .btn.danger{color:var(--bad);border-color:rgba(229,83,75,.5)}
+.bme .btn.sm{padding:.3em .65em;font-size:.88em}
+.bme .btn.ghost{background:none;border-color:transparent}
+.bme .btn.ghost:hover{background:var(--panel2)}
+.bme .chips{display:flex;flex-wrap:wrap;gap:.4em}
+.bme .chip{font:inherit;font-size:.9em;cursor:pointer;border:1px solid var(--line);background:none;color:inherit;border-radius:999px;padding:.3em .8em;user-select:none}
+.bme .chip:hover{border-color:var(--a)}
+.bme .chip.on{background:var(--a);border-color:var(--a);color:#fff}
+.bme .tag{display:inline-block;font-size:.8em;padding:.08em .5em;border-radius:4px;background:var(--panel2);margin:.1em .2em .1em 0;white-space:nowrap}
+.bme details.more>summary{cursor:pointer;font-weight:600;margin:.6em 0;list-style:none}
+.bme details.more>summary::before{content:'▸ ';}
+.bme details.more[open]>summary::before{content:'▾ ';}
+.bme-results-head{display:flex;justify-content:space-between;align-items:center;gap:1em;flex-wrap:wrap;margin:.4em 0 .7em}
+.bme table{width:100%;border-collapse:collapse}
+.bme th{text-align:left;font-size:.8em;text-transform:uppercase;letter-spacing:.05em;opacity:.7;padding:.5em .6em;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:600}
+.bme td{padding:.5em .6em;border-bottom:1px solid var(--line);vertical-align:middle}
+.bme tbody tr.sel{background:rgba(0,164,220,.13)}
+.bme tbody tr.click{cursor:pointer}
+.bme tbody tr.click:hover{background:var(--panel)}
+.bme .thumb{width:40px;height:58px;border-radius:4px;object-fit:cover;background:var(--panel2);display:block}
+.bme .thumb.wide{width:80px;height:45px}
+.bme .ttl{font-weight:600}
+.bme .cb{width:1.15em;height:1.15em;accent-color:var(--a);cursor:pointer}
+.bme .lock{opacity:.8}
+.bme .pager{display:flex;gap:.5em;align-items:center;justify-content:flex-end;margin-top:.8em}
+.bme-selbar{position:sticky;bottom:0;z-index:5;margin-top:1em;display:none;align-items:center;gap:1em;flex-wrap:wrap;padding:.8em 1.1em;border-radius:10px;background:#101e2a;color:#fff;box-shadow:0 6px 24px rgba(0,0,0,.45);border:1px solid rgba(0,164,220,.5)}
+.bme-selbar.on{display:flex}
+.bme-selbar b{font-size:1.1em}
+.bme .op{display:grid;grid-template-columns:2.2em 190px 220px 1fr auto;gap:.6em;align-items:start;padding:.8em;border:1px solid var(--line);border-radius:8px;margin-bottom:.6em;background:rgba(127,127,127,.05)}
+.bme .op .num{font-weight:700;opacity:.6;padding-top:.55em;text-align:center}
+.bme .op .args{display:flex;flex-direction:column;gap:.45em}
+.bme .op .tools{display:flex;gap:.2em}
+@media (max-width:900px){.bme .op{grid-template-columns:2em 1fr}.bme .op .args,.bme .op .tools{grid-column:1/-1}}
+.bme .presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.5em}
+.bme .preset{text-align:left;font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line);background:none;border-radius:8px;padding:.6em .75em}
+.bme .preset:hover{border-color:var(--a);background:var(--panel)}
+.bme .preset b{display:block;font-size:.95em}
+.bme .preset span{font-size:.8em;opacity:.7}
+.bme .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7em;margin-bottom:1em}
+.bme .stat{background:var(--panel2);border-radius:8px;padding:.7em .9em}
+.bme .stat b{display:block;font-size:1.6em;line-height:1.1}
+.bme .stat.ok b{color:var(--ok)}.bme .stat.bad b{color:var(--bad)}
+.bme .diff-old{color:var(--bad);text-decoration:line-through;opacity:.85;word-break:break-word}
+.bme .diff-new{color:var(--ok);word-break:break-word}
+.bme .diff-empty{opacity:.5;font-style:italic}
+.bme .warn{border-left:3px solid var(--warn);background:rgba(224,165,38,.1);padding:.6em .8em;border-radius:4px;margin:.4em 0}
+.bme .err{border-left:3px solid var(--bad);background:rgba(229,83,75,.1);padding:.6em .8em;border-radius:4px;margin:.4em 0}
+.bme .info{border-left:3px solid var(--a);background:rgba(0,164,220,.08);padding:.6em .8em;border-radius:4px;margin:.4em 0}
+.bme .empty{text-align:center;padding:2.5em 1em;opacity:.7}
+.bme .bar{height:.55em;background:var(--panel2);border-radius:999px;overflow:hidden}
+.bme .bar>i{display:block;height:100%;background:var(--a);width:0;transition:width .3s}
+.bme .vbar{height:.35em;background:var(--a);border-radius:999px;opacity:.6;min-width:2px}
+.bme .scroll{max-height:60vh;overflow:auto}
+.bme kbd,.bme code{font-family:ui-monospace,Consolas,monospace;font-size:.88em;background:var(--panel2);padding:.05em .35em;border-radius:4px}
+.bme .checkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.3em .8em}
+.bme .checkgrid label{display:flex;align-items:center;gap:.45em;cursor:pointer}
+.bme-modal-back{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1em}
+.bme-modal{background:#1c1c1e;color:#eee;border:1px solid rgba(255,255,255,.12);border-radius:12px;width:min(1100px,100%);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.bme-modal header{padding:1em 1.2em;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between;gap:1em}
+.bme-modal header h3{margin:0}
+.bme-modal .body{padding:1.1em 1.2em;overflow:auto}
+.bme-modal footer{padding:.9em 1.2em;border-top:1px solid rgba(255,255,255,.1);display:flex;gap:.6em;justify-content:flex-end;flex-wrap:wrap}
+.bme .spin{width:1em;height:1em;border:2px solid rgba(127,127,127,.4);border-top-color:var(--a);border-radius:50%;animation:bmespin .8s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes bmespin{to{transform:rotate(360deg)}}
+.bme .toast{position:fixed;left:50%;bottom:1.5em;transform:translateX(-50%);background:#222;color:#fff;padding:.7em 1.2em;border-radius:8px;z-index:3000;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:90vw}
+.bme .toast.bad{background:#7a1f1a}
+.bme .hint{font-size:.8em;opacity:.7}
+.bme .split{display:grid;grid-template-columns:1fr 1fr;gap:1em}
+@media (max-width:900px){.bme .split{grid-template-columns:1fr}}
+</style>
+
+<div class="bme-head">
+    <h2>Bulk Metadata Editor</h2>
+    <span class="ver" id="bmeVersion"></span>
+    <div class="bme-jobpill" id="bmeJobPill" title="A bulk job is running — click for details"><span class="bme-dot"></span><span id="bmeJobPillText">Working…</span></div>
+</div>
+
+<div class="bme-tabs" role="tablist">
+    <button class="bme-tab on" data-tab="find">1 · Find items</button>
+    <button class="bme-tab" data-tab="edit">2 · Edit selected<span class="n" id="bmeTabCount">0</span></button>
+    <button class="bme-tab" data-tab="values">Genres, tags &amp; studios</button>
+    <button class="bme-tab" data-tab="csv">Spreadsheet (CSV)</button>
+    <button class="bme-tab" data-tab="history">History &amp; undo</button>
+</div>
+
+<!-- ============================== FIND ============================== -->
+<section class="bme-panel on" data-panel="find">
+    <div class="bme-card">
+        <div class="bme-grid" style="grid-template-columns:2fr 1fr auto">
+            <div><label class="lbl">Search title, original title or file path</label><input type="text" id="fText" placeholder="e.g. star wars, /movies/4k, 1080p"></div>
+            <div><label class="lbl">Series name (for seasons &amp; episodes)</label><input type="text" id="fSeries" placeholder="e.g. The Office"></div>
+            <div style="display:flex;align-items:end;gap:.5em"><button class="btn pri" id="bSearch">Search</button><button class="btn ghost" id="bReset">Reset</button></div>
+        </div>
+        <div style="margin-top:1em"><label class="lbl">Libraries <span class="muted small">(none selected = all)</span></label><div class="chips" id="fLibs"></div></div>
+        <div style="margin-top:.9em"><label class="lbl">Item types <span class="muted small">(none selected = all common types)</span></label><div class="chips" id="fTypes"></div></div>
+
+        <details class="more" id="fMore">
+            <summary>More filters <span class="muted small" id="fMoreCount"></span></summary>
+            <div class="bme-grid">
+                <div><label class="lbl">Has any genre</label><input type="text" id="fGenres" list="dlGenres" placeholder="Comedy | Drama"></div>
+                <div><label class="lbl">Has any tag</label><input type="text" id="fTags" list="dlTags" placeholder="4K | Favorites"></div>
+                <div><label class="lbl">Does NOT have tag</label><input type="text" id="fLacksTags" list="dlTags" placeholder="Kids"></div>
+                <div><label class="lbl">Has any studio / network</label><input type="text" id="fStudios" list="dlStudios" placeholder="Pixar"></div>
+                <div><label class="lbl">Parental rating is</label><input type="text" id="fRatings" list="dlRatings" placeholder="PG-13 | (none)"></div>
+                <div class="bme-row" style="flex-wrap:nowrap"><div style="flex:1"><label class="lbl">Year from</label><input type="number" id="fYearFrom" placeholder="1980"></div><div style="flex:1"><label class="lbl">Year to</label><input type="number" id="fYearTo" placeholder="1989"></div></div>
+                <div><label class="lbl">Field</label><select id="fFieldKey"></select></div>
+                <div><label class="lbl">…contains text</label><input type="text" id="fFieldQuery" placeholder="e.g. Disney"></div>
+                <div><label class="lbl">Lock state</label><select id="fLocked"><option value="any">Any</option><option value="locked">Item locked</option><option value="unlocked">Item not locked</option><option value="hasLockedFields">Has locked fields</option></select></div>
+            </div>
+            <div style="margin-top:1em"><label class="lbl">Missing / empty <span class="muted small">(items must be missing all selected)</span></label><div class="chips" id="fMissing"></div></div>
+        </details>
+
+        <div class="bme-row" style="margin-top:.8em;justify-content:flex-end">
+            <label class="lbl" style="margin:0">Sort</label>
+            <select id="fSort" style="width:auto"><option value="Name">Title</option><option value="Series">Series / episode order</option><option value="Year">Year</option><option value="DateAdded">Date added</option><option value="Rating">Community rating</option><option value="Type">Type</option><option value="Library">Library</option></select>
+            <label class="bme-row small" style="gap:.3em"><input type="checkbox" class="cb" id="fDesc">Descending</label>
+            <select id="fPageSize" style="width:auto"><option>25</option><option selected>50</option><option>100</option><option>250</option></select>
+        </div>
+    </div>
+
+    <div class="bme-results-head">
+        <div id="rCount" class="muted">Pick some filters and press Search (or just Search to list everything).</div>
+        <div class="bme-row">
+            <button class="btn sm" id="bSelPage" disabled>Select page</button>
+            <button class="btn sm" id="bSelAll" disabled>Select all matches</button>
+            <button class="btn sm ghost" id="bSelNone" disabled>Clear selection</button>
+        </div>
+    </div>
+    <div class="bme-card" style="padding:0;overflow-x:auto">
+        <table>
+            <thead><tr><th style="width:2.5em"><input type="checkbox" class="cb" id="rAll" title="Select this page"></th><th style="width:48px"></th><th>Title</th><th>Type</th><th>Library</th><th>Rating</th><th>Genres</th><th>Tags</th><th></th></tr></thead>
+            <tbody id="rBody"><tr><td colspan="9" class="empty">No search yet.</td></tr></tbody>
+        </table>
+    </div>
+    <div class="pager" id="rPager"></div>
+</section>
+
+<!-- ============================== EDIT ============================== -->
+<section class="bme-panel" data-panel="edit">
+    <div id="eNoSel" class="bme-card empty">No items selected yet. Go to <b>1 · Find items</b>, search, and tick the items you want to change (or use <b>Select all matches</b>).</div>
+    <div id="eMain">
+        <div class="info" id="eTarget"></div>
+
+        <div class="bme-card">
+            <h3>Quick start</h3>
+            <div class="presets" id="ePresets"></div>
+        </div>
+
+        <div class="bme-card">
+            <div class="bme-row" style="justify-content:space-between;margin-bottom:.6em"><h3 style="margin:0">Edits <span class="muted small">— applied top to bottom to every selected item</span></h3><button class="btn sm" id="bAddOp">+ Add edit</button></div>
+            <div id="eOps"></div>
+            <div class="hint">Tokens you can use in values: <code>{Name}</code> <code>{Year}</code> <code>{OriginalTitle}</code> <code>{SeriesName}</code> <code>{SeasonNumber:00}</code> <code>{EpisodeNumber:00}</code> <code>{Library}</code> <code>{Type}</code> <code>{FileName}</code> <code>{Folder}</code> <code>{value}</code> (the field's current value). Separate multiple genres / tags with <code>|</code>.</div>
+        </div>
+
+        <div class="bme-card">
+            <div class="bme-grid" style="grid-template-columns:1fr 2fr">
+                <label class="bme-row" style="gap:.5em;cursor:pointer"><input type="checkbox" class="cb" id="eLock"><span><b>Lock edited fields</b><br><span class="hint">Stops library scans / metadata refreshes from overwriting your changes.</span></span></label>
+                <div><label class="lbl">Note for history (optional)</label><input type="text" id="eDesc" placeholder="e.g. Tag all Christmas movies"></div>
+            </div>
+            <div class="bme-row" style="margin-top:1em;justify-content:flex-end">
+                <button class="btn" id="bPreview">Preview changes</button>
+                <button class="btn pri" id="bApply">Apply to selected items</button>
+            </div>
+        </div>
+
+        <div id="ePreview"></div>
+
+        <div class="bme-card">
+            <h3>Refresh from online providers</h3>
+            <p class="muted small" style="margin-top:0">Queues Jellyfin's normal metadata refresh for the selected items. Locked fields are kept.</p>
+            <div class="bme-row">
+                <select id="eRefreshMode" style="width:auto">
+                    <option value="missing">Fill in missing metadata &amp; images only</option>
+                    <option value="metadata">Replace all metadata</option>
+                    <option value="images">Replace all images</option>
+                    <option value="all">Replace all metadata &amp; images</option>
+                </select>
+                <button class="btn" id="bRefresh">Queue refresh</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================== VALUES ============================== -->
+<section class="bme-panel" data-panel="values">
+    <div class="bme-card">
+        <p class="muted" style="margin-top:0">See every genre, tag, studio or rating in use — then rename, merge or delete them everywhere in one go. Every change is previewed first and can be undone.</p>
+        <div class="bme-grid" style="grid-template-columns:1fr 1fr 1fr auto">
+            <div><label class="lbl">Field</label><select id="vField">
+                <option value="Genres">Genres</option><option value="Tags">Tags</option><option value="Studios">Studios / networks</option><option value="ProductionLocations">Countries</option>
+                <option value="OfficialRating">Parental rating</option><option value="CustomRating">Custom rating</option><option value="ProductionYear">Year</option><option value="PreferredMetadataLanguage">Metadata language</option></select></div>
+            <div><label class="lbl">Scope</label><select id="vScope"><option value="all">All libraries</option><option value="filter">Items matching the Find filters</option><option value="selected">Selected items only</option></select></div>
+            <div><label class="lbl">Filter list</label><input type="text" id="vQuery" placeholder="type to filter…"></div>
+            <div style="display:flex;align-items:end"><button class="btn pri" id="bLoadValues">Load</button></div>
+        </div>
+    </div>
+    <div class="bme-results-head">
+        <div id="vCount" class="muted">Press Load.</div>
+        <div class="bme-row">
+            <button class="btn sm" id="bVMerge" disabled>Merge / rename checked…</button>
+            <button class="btn sm danger" id="bVDelete" disabled>Delete checked…</button>
+        </div>
+    </div>
+    <div class="bme-card" style="padding:0">
+        <div class="scroll"><table><thead><tr><th style="width:2.5em"><input type="checkbox" class="cb" id="vAll"></th><th>Value</th><th style="width:30%">Items</th><th style="width:1%"></th></tr></thead><tbody id="vBody"><tr><td colspan="4" class="empty">Nothing loaded.</td></tr></tbody></table></div>
+    </div>
+</section>
+
+<!-- ============================== CSV ============================== -->
+<section class="bme-panel" data-panel="csv">
+    <div class="split">
+        <div class="bme-card">
+            <h3>1. Export</h3>
+            <p class="muted small" style="margin-top:0">Download metadata as a CSV, edit it in Excel, Google Sheets or LibreOffice, then import it back. Keep the <code>Id</code> column. Lists (genres, tags…) are separated with <code>|</code>.</p>
+            <label class="lbl">Items</label>
+            <select id="xScope"><option value="selected">Selected items</option><option value="filter">Items matching the Find filters</option><option value="all">Everything in all libraries</option></select>
+            <details class="more"><summary>Columns</summary><div class="checkgrid" id="xCols"></div></details>
+            <div class="bme-row" style="margin-top:.8em"><button class="btn pri" id="bExport">Download CSV</button></div>
+        </div>
+        <div class="bme-card">
+            <h3>2. Import</h3>
+            <p class="muted small" style="margin-top:0">Only changed cells are written. Read-only columns (Library, Type, Path…) are ignored. You'll see a full preview before anything is saved.</p>
+            <input type="file" id="iFile" accept=".csv,text/csv,.tsv,.txt">
+            <div style="margin:.7em 0;display:flex;flex-direction:column;gap:.45em">
+                <label class="bme-row" style="gap:.5em"><input type="checkbox" class="cb" id="iBlank"><span>Blank cells <b>clear</b> the field <span class="hint">(otherwise blanks are left alone)</span></span></label>
+                <label class="bme-row" style="gap:.5em"><input type="checkbox" class="cb" id="iLock"><span>Lock edited fields</span></label>
+            </div>
+            <button class="btn pri" id="bImportPreview" disabled>Preview import</button>
+        </div>
+    </div>
+    <div id="iPreview"></div>
+</section>
+
+<!-- ============================== HISTORY ============================== -->
+<section class="bme-panel" data-panel="history">
+    <div class="bme-results-head"><div class="muted">Every bulk change is recorded here. Undo restores the exact previous values.</div><button class="btn sm" id="bHistReload">Reload</button></div>
+    <div class="bme-card" style="padding:0;overflow-x:auto">
+        <table><thead><tr><th>When</th><th>What</th><th>Items</th><th>Fields</th><th>By</th><th></th></tr></thead><tbody id="hBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody></table>
+    </div>
+</section>
+
+<div class="bme-selbar" id="bmeSelbar">
+    <b id="sbCount">0 selected</b>
+    <span class="small" id="sbHint" style="opacity:.8"></span>
+    <span style="flex:1"></span>
+    <button class="btn sm" id="sbClear" style="color:#fff">Clear</button>
+    <button class="btn sm pri" id="sbEdit">Edit selected →</button>
+</div>
+
+<datalist id="dlGenres"></datalist><datalist id="dlTags"></datalist><datalist id="dlStudios"></datalist><datalist id="dlRatings"></datalist>
+<div id="bmeModalHost"></div>
+
+</div>
+</div>
+
+<script type="text/javascript">
+(function () {
+    'use strict';
+    var page = document.getElementById('BulkMetadataPage');
+    if (!page || page.dataset.bmeInit) { return; }
+    page.dataset.bmeInit = '1';
+
+    var $ = function (sel, root) { return (root || page).querySelector(sel); };
+    var $$ = function (sel, root) { return Array.prototype.slice.call((root || page).querySelectorAll(sel)); };
+
+    var S = {
+        catalog: null,
+        libs: new Set(), types: new Set(), missing: new Set(),
+        results: [], total: 0, start: 0, lastFilter: null,
+        selected: new Map(), lastClicked: -1,
+        ops: [], values: [], vChecked: new Set(),
+        importText: null
+    };
+
+    // ------------------------------------------------------------ helpers
+    function esc(s) { return s === null || s === undefined ? '' : String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function fmt(n) { return (n || 0).toLocaleString(); }
+    function splitList(s) { if (!s) { return []; } var seps = /[|;\n]/.test(s) ? /[|;\n]/ : /,/; return s.split(seps).map(function (x) { return x.trim(); }).filter(Boolean); }
+    function token() { try { return ApiClient.accessToken(); } catch (e) { return ''; } }
+    function api(path, body, method) {
+        var opts = { method: method || (body !== undefined ? 'POST' : 'GET'), headers: { 'Authorization': 'MediaBrowser Token="' + token() + '"', 'X-Emby-Token': token() } };
+        if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        return fetch(ApiClient.getUrl('BulkMetadata/' + path), opts).then(function (r) {
+            if (r.status === 204) { return null; }
+            return r.text().then(function (txt) {
+                var data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { /* not json */ }
+                if (!r.ok) { throw new Error((data && (data.Error || data.error || data.title || data.detail)) || ('Request failed (HTTP ' + r.status + ')')); }
+                return data;
+            });
+        });
+    }
+    function toast(msg, bad) {
+        var t = document.createElement('div'); t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg;
+        page.querySelector('.bme').appendChild(t); setTimeout(function () { t.remove(); }, bad ? 6000 : 3200);
+    }
+    function busy(btn, on, label) {
+        if (!btn) { return; }
+        if (on) { btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> ' + (label || 'Working…'); }
+        else { btn.disabled = false; if (btn.dataset.label) { btn.innerHTML = btn.dataset.label; } }
+    }
+    function imgUrl(id) { return ApiClient.getUrl('Items/' + id + '/Images/Primary', { maxHeight: 120, quality: 80 }); }
+    function fieldDef(key) { return (S.catalog.Fields || []).find(function (f) { return f.Key.toLowerCase() === String(key).toLowerCase(); }) || (String(key).indexOf('ProviderIds.') === 0 ? { Key: key, Label: key.substring(12) + ' id', Kind: 'ProviderId' } : null); }
+    function itemLabel(it) {
+        if (it.Type === 'Episode') { return (it.SeriesName || '') + ' ' + (it.ParentIndexNumber != null ? 'S' + String(it.ParentIndexNumber).padStart(2, '0') : '') + (it.IndexNumber != null ? 'E' + String(it.IndexNumber).padStart(2, '0') : '') + ' – ' + it.Name; }
+        if (it.Type === 'Season') { return (it.SeriesName || '') + ' – ' + it.Name; }
+        return it.Name + (it.Year ? ' (' + it.Year + ')' : '');
+    }
+
+    // ------------------------------------------------------------ modal
+    function modal(title, bodyHtml, buttons, opts) {
+        opts = opts || {};
+        var host = $('#bmeModalHost');
+        var back = document.createElement('div'); back.className = 'bme-modal-back';
+        back.innerHTML = '<div class="bme-modal" style="' + (opts.width ? 'width:min(' + opts.width + ',100%)' : '') + '"><header><h3>' + esc(title) + '</h3><button class="btn ghost sm" data-x>✕</button></header><div class="body">' + bodyHtml + '</div><footer></footer></div>';
+        var foot = back.querySelector('footer');
+        var api_ = { el: back, body: back.querySelector('.body'), close: function () { back.remove(); if (opts.onClose) { opts.onClose(); } }, footer: foot };
+        (buttons || [{ label: 'Close' }]).forEach(function (b) {
+            var btn = document.createElement('button'); btn.className = 'btn' + (b.cls ? ' ' + b.cls : ''); btn.innerHTML = b.label;
+            btn.addEventListener('click', function () { if (b.onClick) { b.onClick(api_, btn); } else { api_.close(); } });
+            foot.appendChild(btn);
+        });
+        back.querySelector('[data-x]').addEventListener('click', function () { if (!opts.locked) { api_.close(); } });
+        back.addEventListener('click', function (e) { if (e.target === back && !opts.locked) { api_.close(); } });
+        host.appendChild(back);
+        return api_;
+    }
+
+    // ------------------------------------------------------------ tabs
+    function showTab(name) {
+        $$('.bme-tab').forEach(function (t) { t.classList.toggle('on', t.dataset.tab === name); });
+        $$('.bme-panel').forEach(function (p) { p.classList.toggle('on', p.dataset.panel === name); });
+        if (name === 'history') { loadHistory(); }
+        if (name === 'edit') { renderEditTarget(); }
+        window.scrollTo(0, 0);
+    }
+    $$('.bme-tab').forEach(function (t) { t.addEventListener('click', function () { showTab(t.dataset.tab); }); });
+
+    // ------------------------------------------------------------ catalog / init
+    var MISSING = [['Overview', 'Overview'], ['Genres', 'Genres'], ['Tags', 'Tags'], ['Studios', 'Studios'], ['OfficialRating', 'Parental rating'], ['ProductionYear', 'Year'], ['PremiereDate', 'Release date'], ['CommunityRating', 'Community rating'], ['ForcedSortName', 'Sort title'], ['Tagline', 'Tagline'], ['OriginalTitle', 'Original title'], ['ProviderIds.Imdb', 'IMDb id'], ['ProviderIds.Tmdb', 'TMDb id'], ['ProviderIds.Tvdb', 'TVDB id'], ['PrimaryImage', 'Poster / primary image'], ['BackdropImage', 'Backdrop'], ['LogoImage', 'Logo']];
+    var TYPE_LABELS = { Movie: 'Movies', Series: 'Series', Season: 'Seasons', Episode: 'Episodes', BoxSet: 'Collections', MusicVideo: 'Music videos', MusicAlbum: 'Albums', Audio: 'Songs', AudioBook: 'Audiobooks', Book: 'Books', Video: 'Home videos', Trailer: 'Trailers', Photo: 'Photos', PhotoAlbum: 'Photo albums' };
+
+    function chipGroup(container, items, set, onChange) {
+        container.innerHTML = items.map(function (i) { return '<button class="chip' + (set.has(i[0]) ? ' on' : '') + '" data-v="' + esc(i[0]) + '">' + esc(i[1]) + '</button>'; }).join('');
+        $$('.chip', container).forEach(function (c) {
+            c.addEventListener('click', function () { var v = c.dataset.v; if (set.has(v)) { set.delete(v); } else { set.add(v); } c.classList.toggle('on'); if (onChange) { onChange(); } });
+        });
+    }
+
+    function fieldOptions(filterFn, includeProviders) {
+        var html = S.catalog.Fields.filter(function (f) { return !filterFn || filterFn(f); }).map(function (f) { return '<option value="' + esc(f.Key) + '">' + esc(f.Label) + '</option>'; }).join('');
+        if (includeProviders) { html += '<optgroup label="Provider ids">' + S.catalog.Providers.map(function (p) { return '<option value="ProviderIds.' + esc(p) + '">' + esc(p) + ' id</option>'; }).join('') + '</optgroup>'; }
+        return html;
+    }
+
+    function init() {
+        if (S.initStarted) { return; }
+        S.initStarted = true;
+        api('Catalog').then(function (c) {
+            S.catalog = c;
+            $('#bmeVersion').textContent = 'v' + (c.Version || '');
+            chipGroup($('#fLibs'), c.Libraries.map(function (l) { return [l.Id, l.Name]; }), S.libs);
+            chipGroup($('#fTypes'), c.ItemTypes.map(function (t) { return [t, TYPE_LABELS[t] || t]; }), S.types);
+            chipGroup($('#fMissing'), MISSING, S.missing, updateMoreCount);
+            $('#fFieldKey').innerHTML = '<option value="">— any field —</option>' + fieldOptions(function (f) { return f.Kind !== 'Boolean'; }, true);
+            $('#eLock').checked = !!c.DefaultLockEditedFields;
+            $('#iLock').checked = !!c.DefaultLockEditedFields;
+            $('#xCols').innerHTML = c.DefaultColumns.map(function (col) { var d = fieldDef(col); return '<label><input type="checkbox" class="cb" value="' + esc(col) + '" checked' + (col === 'Id' ? ' disabled' : '') + '>' + esc(d ? d.Label : col) + '</label>'; }).join('');
+            renderPresets();
+            renderOps();
+            loadSuggestions();
+            pollCurrentJob();
+        }).catch(function (e) { S.initStarted = false; toast('Could not load the Bulk Metadata API: ' + e.message, true); });
+    }
+
+    function loadSuggestions() {
+        [['Genres', 'dlGenres'], ['Tags', 'dlTags'], ['Studios', 'dlStudios'], ['OfficialRating', 'dlRatings']].forEach(function (p) {
+            api('Values', { Target: { Filter: {} }, Field: p[0] }).then(function (vals) {
+                var dl = page.querySelector('#' + p[1]); if (dl) { dl.innerHTML = (vals || []).slice(0, 400).map(function (v) { return '<option value="' + esc(v.Value) + '">'; }).join(''); }
+            }).catch(function () { /* suggestions are optional */ });
+        });
+    }
+
+    // ------------------------------------------------------------ FIND
+    function readFilter() {
+        return {
+            LibraryIds: Array.from(S.libs), ItemTypes: Array.from(S.types),
+            Text: $('#fText').value.trim() || null, SeriesText: $('#fSeries').value.trim() || null,
+            HasGenres: splitList($('#fGenres').value), HasTags: splitList($('#fTags').value), LacksTags: splitList($('#fLacksTags').value),
+            HasStudios: splitList($('#fStudios').value), OfficialRatings: splitList($('#fRatings').value),
+            YearFrom: $('#fYearFrom').value ? parseInt($('#fYearFrom').value, 10) : null, YearTo: $('#fYearTo').value ? parseInt($('#fYearTo').value, 10) : null,
+            FieldKey: $('#fFieldKey').value || null, FieldQuery: $('#fFieldQuery').value.trim() || null,
+            Missing: Array.from(S.missing), Locked: $('#fLocked').value,
+            SortBy: $('#fSort').value, SortDesc: $('#fDesc').checked
+        };
+    }
+    function updateMoreCount() {
+        var f = readFilter(); var n = f.HasGenres.length + f.HasTags.length + f.LacksTags.length + f.HasStudios.length + f.OfficialRatings.length + (f.YearFrom ? 1 : 0) + (f.YearTo ? 1 : 0) + (f.FieldQuery ? 1 : 0) + f.Missing.length + (f.Locked !== 'any' ? 1 : 0);
+        $('#fMoreCount').textContent = n ? '(' + n + ' active)' : '';
+    }
+    ['#fGenres', '#fTags', '#fLacksTags', '#fStudios', '#fRatings', '#fYearFrom', '#fYearTo', '#fFieldQuery', '#fLocked'].forEach(function (s) { $(s).addEventListener('change', updateMoreCount); });
+
+    function search(start) {
+        var btn = $('#bSearch');
+        busy(btn, true, 'Searching…');
+        S.lastFilter = readFilter();
+        S.start = start || 0;
+        var limit = parseInt($('#fPageSize').value, 10);
+        return api('Search', { Filter: S.lastFilter, StartIndex: S.start, Limit: limit }).then(function (r) {
+            S.results = r.Items || []; S.total = r.TotalRecordCount || 0;
+            renderResults(limit);
+        }).catch(function (e) { toast(e.message, true); }).finally(function () { busy(btn, false); });
+    }
+    $('#bSearch').addEventListener('click', function () { search(0); });
+    ['#fText', '#fSeries', '#fFieldQuery'].forEach(function (s) { $(s).addEventListener('keydown', function (e) { if (e.key === 'Enter') { search(0); } }); });
+    ['#fSort', '#fDesc', '#fPageSize'].forEach(function (s) { $(s).addEventListener('change', function () { if (S.lastFilter) { search(0); } }); });
+    $('#bReset').addEventListener('click', function () {
+        ['#fText', '#fSeries', '#fGenres', '#fTags', '#fLacksTags', '#fStudios', '#fRatings', '#fYearFrom', '#fYearTo', '#fFieldQuery'].forEach(function (s) { $(s).value = ''; });
+        $('#fFieldKey').value = ''; $('#fLocked').value = 'any';
+        S.libs.clear(); S.types.clear(); S.missing.clear(); $$('#fLibs .chip, #fTypes .chip, #fMissing .chip').forEach(function (c) { c.classList.remove('on'); });
+        updateMoreCount();
+    });
+
+    function renderResults(limit) {
+        $('#rCount').innerHTML = '<b>' + fmt(S.total) + '</b> item' + (S.total === 1 ? '' : 's') + ' match' + (S.total ? ' · showing ' + fmt(S.start + 1) + '–' + fmt(Math.min(S.start + limit, S.total)) : '');
+        ['#bSelPage', '#bSelAll'].forEach(function (s) { $(s).disabled = !S.total; });
+        $('#bSelAll').textContent = 'Select all ' + fmt(S.total) + ' matches';
+        var body = $('#rBody');
+        if (!S.results.length) { body.innerHTML = '<tr><td colspan="9" class="empty">No items match these filters.</td></tr>'; $('#rPager').innerHTML = ''; return; }
+        body.innerHTML = S.results.map(function (it, i) {
+            var sel = S.selected.has(it.Id);
+            var wide = it.Type === 'Episode' || it.Type === 'Video';
+            var sub = it.Type === 'Episode' ? esc(it.SeriesName || '') + ' · S' + String(it.ParentIndexNumber || 0).padStart(2, '0') + 'E' + String(it.IndexNumber || 0).padStart(2, '0') : (it.Type === 'Season' ? esc(it.SeriesName || '') : (it.Year || ''));
+            return '<tr class="click' + (sel ? ' sel' : '') + '" data-i="' + i + '">' +
+                '<td><input type="checkbox" class="cb" ' + (sel ? 'checked' : '') + '></td>' +
+                '<td>' + (it.HasPrimaryImage ? '<img class="thumb' + (wide ? ' wide' : '') + '" loading="lazy" src="' + esc(imgUrl(it.Id)) + '" alt="">' : '<div class="thumb' + (wide ? ' wide' : '') + '"></div>') + '</td>' +
+                '<td><div class="ttl">' + esc(it.Name) + '</div><div class="muted small">' + sub + '</div>' + (it.Overview ? '<div class="muted small" style="max-width:38em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.Overview) + '</div>' : '') + '</td>' +
+                '<td class="small">' + esc(TYPE_LABELS[it.Type] ? TYPE_LABELS[it.Type].replace(/s$/, '') : it.Type) + '</td>' +
+                '<td class="small">' + esc(it.Library || '') + '</td>' +
+                '<td class="small">' + esc(it.OfficialRating || '') + (it.CommunityRating ? '<div class="muted">★ ' + Number(it.CommunityRating).toFixed(1) + '</div>' : '') + '</td>' +
+                '<td>' + (it.Genres || []).slice(0, 4).map(function (g) { return '<span class="tag">' + esc(g) + '</span>'; }).join('') + ((it.Genres || []).length > 4 ? '<span class="muted small">+' + (it.Genres.length - 4) + '</span>' : '') + '</td>' +
+                '<td>' + (it.Tags || []).slice(0, 4).map(function (g) { return '<span class="tag">' + esc(g) + '</span>'; }).join('') + ((it.Tags || []).length > 4 ? '<span class="muted small">+' + (it.Tags.length - 4) + '</span>' : '') + '</td>' +
+                '<td class="lock" title="' + (it.IsLocked ? 'Item locked' : '') + (it.LockedFields && it.LockedFields.length ? ' Locked fields: ' + esc(it.LockedFields.join(', ')) : '') + '">' + (it.IsLocked ? '🔒' : (it.LockedFields && it.LockedFields.length ? '🔐' : '')) + '</td></tr>';
+        }).join('');
+        $$('tr.click', body).forEach(function (tr) {
+            tr.addEventListener('click', function (e) {
+                var i = parseInt(tr.dataset.i, 10);
+                if (e.shiftKey && S.lastClicked >= 0) {
+                    var on = !S.selected.has(S.results[i].Id);
+                    for (var k = Math.min(i, S.lastClicked); k <= Math.max(i, S.lastClicked); k++) { setSel(S.results[k], on); }
+                } else { setSel(S.results[i], !S.selected.has(S.results[i].Id)); }
+                S.lastClicked = i; refreshRowSel();
+            });
+        });
+        refreshRowSel();
+        var pages = Math.ceil(S.total / limit), cur = Math.floor(S.start / limit);
+        $('#rPager').innerHTML = pages > 1 ? '<button class="btn sm" data-p="' + (cur - 1) + '" ' + (cur === 0 ? 'disabled' : '') + '>‹ Prev</button><span class="small">Page ' + (cur + 1) + ' of ' + pages + '</span><button class="btn sm" data-p="' + (cur + 1) + '" ' + (cur >= pages - 1 ? 'disabled' : '') + '>Next ›</button>' : '';
+        $$('#rPager [data-p]').forEach(function (b) { b.addEventListener('click', function () { search(parseInt(b.dataset.p, 10) * limit); }); });
+    }
+    function setSel(it, on) { if (on) { S.selected.set(it.Id, { Name: itemLabel(it), Type: it.Type }); } else { S.selected.delete(it.Id); } }
+    function refreshRowSel() {
+        $$('#rBody tr.click').forEach(function (tr) { var it = S.results[parseInt(tr.dataset.i, 10)]; var on = S.selected.has(it.Id); tr.classList.toggle('sel', on); tr.querySelector('.cb').checked = on; });
+        var allOn = S.results.length && S.results.every(function (it) { return S.selected.has(it.Id); });
+        $('#rAll').checked = !!allOn;
+        updateSelUi();
+    }
+    function updateSelUi() {
+        var n = S.selected.size;
+        $('#bmeTabCount').textContent = fmt(n);
+        $('#sbCount').textContent = fmt(n) + ' selected';
+        var types = {}; S.selected.forEach(function (v) { types[v.Type] = (types[v.Type] || 0) + 1; });
+        $('#sbHint').textContent = Object.keys(types).map(function (t) { return fmt(types[t]) + ' ' + (TYPE_LABELS[t] || t).toLowerCase(); }).join(', ');
+        $('#bmeSelbar').classList.toggle('on', n > 0 && !page.querySelector('[data-panel="edit"]').classList.contains('on'));
+        $('#bSelNone').disabled = !n;
+    }
+    $('#rAll').addEventListener('change', function (e) { S.results.forEach(function (it) { setSel(it, e.target.checked); }); refreshRowSel(); });
+    $('#bSelPage').addEventListener('click', function () { S.results.forEach(function (it) { setSel(it, true); }); refreshRowSel(); });
+    $('#bSelNone').addEventListener('click', function () { S.selected.clear(); refreshRowSel(); });
+    $('#sbClear').addEventListener('click', function () { S.selected.clear(); refreshRowSel(); });
+    $('#sbEdit').addEventListener('click', function () { showTab('edit'); updateSelUi(); });
+    $('#bSelAll').addEventListener('click', function () {
+        var btn = $('#bSelAll'); busy(btn, true, 'Selecting…');
+        api('Search', { Filter: S.lastFilter || readFilter(), IdsOnly: true }).then(function (r) {
+            // Names for ids not on screen are fetched lazily; we only need ids to edit.
+            (r.Ids || []).forEach(function (id) { if (!S.selected.has(id)) { var onPage = S.results.find(function (x) { return x.Id === id; }); S.selected.set(id, onPage ? { Name: itemLabel(onPage), Type: onPage.Type } : { Name: '', Type: '?' }); } });
+            refreshRowSel(); toast(fmt((r.Ids || []).length) + ' items selected');
+        }).catch(function (e) { toast(e.message, true); }).finally(function () { busy(btn, false); $('#bSelAll').textContent = 'Select all ' + fmt(S.total) + ' matches'; });
+    });
+
+    // ------------------------------------------------------------ EDIT
+    var ACTIONS = [
+        ['set', 'Set to'], ['clear', 'Clear'], ['add', 'Add values'], ['remove', 'Remove values'], ['replace', 'Find & replace'],
+        ['append', 'Add text at end'], ['prepend', 'Add text at start'], ['case', 'Change capitalization'], ['copy', 'Copy from another field'],
+        ['trim', 'Clean up (trim / de-duplicate)'], ['sort', 'Sort A→Z'], ['lockFields', 'Lock fields'], ['unlockFields', 'Unlock fields']
+    ];
+    function fieldsFor(action) {
+        switch (action) {
+            case 'add': case 'remove': case 'sort': return function (f) { return f.Kind === 'List' && f.Key !== 'LockedFields'; };
+            case 'append': case 'prepend': case 'replace': case 'case': case 'trim': return function (f) { return (f.Kind === 'Text' || f.Kind === 'List') && f.Key !== 'LockedFields'; };
+            case 'copy': return function (f) { return (f.Kind === 'Text' || f.Kind === 'List') && f.Key !== 'LockedFields'; };
+            default: return function (f) { return f.Key !== 'LockedFields'; };
+        }
+    }
+    var PRESETS = [
+        { t: 'Add tags', d: 'e.g. 4K, Favorites, Holiday', ops: [{ Action: 'add', Field: 'Tags' }] },
+        { t: 'Remove tags', d: 'Take tags off the selection', ops: [{ Action: 'remove', Field: 'Tags' }] },
+        { t: 'Add / set genres', d: 'Add genres to everything', ops: [{ Action: 'add', Field: 'Genres' }] },
+        { t: 'Rename a genre', d: '"Sci-Fi" → "Science Fiction"', ops: [{ Action: 'replace', Field: 'Genres' }] },
+        { t: 'Set parental rating', d: 'PG-13, TV-MA, …', ops: [{ Action: 'set', Field: 'OfficialRating' }] },
+        { t: 'Set studio / network', d: 'Replace the studio list', ops: [{ Action: 'set', Field: 'Studios' }] },
+        { t: 'Find & replace in titles', d: 'Fix typos or naming', ops: [{ Action: 'replace', Field: 'Name' }] },
+        { t: 'Fix title capitalization', d: 'the dark knight → The Dark Knight', ops: [{ Action: 'case', Field: 'Name', Mode: 'title' }] },
+        { t: 'Sort titles from a template', d: 'e.g. group a franchise together', ops: [{ Action: 'set', Field: 'ForcedSortName', Value: '{Name}' }] },
+        { t: 'Set year', d: 'Production year', ops: [{ Action: 'set', Field: 'ProductionYear' }] },
+        { t: 'Clean up genres & tags', d: 'Trim, de-duplicate, sort', ops: [{ Action: 'trim', Field: 'Genres' }, { Action: 'sort', Field: 'Genres' }, { Action: 'trim', Field: 'Tags' }, { Action: 'sort', Field: 'Tags' }] },
+        { t: 'Lock metadata', d: 'Protect from refreshes', ops: [{ Action: 'lockFields', Value: 'Name|Overview|Genres|Tags|Studios|OfficialRating' }] },
+        { t: 'Unlock everything', d: 'Allow refreshes again', ops: [{ Action: 'unlockFields', Value: '*' }, { Action: 'set', Field: 'IsLocked', Value: 'false' }] },
+        { t: 'Use original title as title', d: 'Copy Original title → Title', ops: [{ Action: 'copy', Field: 'Name', SourceField: 'OriginalTitle' }] }
+    ];
+    function renderPresets() {
+        $('#ePresets').innerHTML = PRESETS.map(function (p, i) { return '<button class="preset" data-i="' + i + '"><b>' + esc(p.t) + '</b><span>' + esc(p.d) + '</span></button>'; }).join('');
+        $$('#ePresets .preset').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var p = PRESETS[parseInt(b.dataset.i, 10)];
+                var blank = S.ops.length === 1 && !S.ops[0].Value && !S.ops[0].Find && S.ops[0].Action === 'set';
+                if (blank) { S.ops = []; }
+                p.ops.forEach(function (o) { S.ops.push(Object.assign({ Action: 'set', Field: 'Tags', Value: '', Find: '', Replace: '', UseRegex: false, CaseSensitive: false, OnlyIfEmpty: false, Mode: 'title', SourceField: 'OriginalTitle' }, o)); });
+                renderOps(); clearPreview();
+                var last = $$('#eOps .op'); if (last.length) { var inp = last[last.length - 1].querySelector('input[type=text],textarea'); if (inp) { inp.focus(); } }
+            });
+        });
+    }
+    function newOp() { return { Action: 'set', Field: 'OfficialRating', Value: '', Find: '', Replace: '', UseRegex: false, CaseSensitive: false, OnlyIfEmpty: false, Mode: 'title', SourceField: 'OriginalTitle' }; }
+    $('#bAddOp').addEventListener('click', function () { S.ops.push(newOp()); renderOps(); clearPreview(); });
+
+    function valueInput(op, def) {
+        var v = esc(op.Value || '');
+        if (!def) { return '<input type="text" data-k="Value" value="' + v + '">'; }
+        if (def.Kind === 'Boolean') { return '<select data-k="Value"><option value="true"' + (op.Value === 'true' ? ' selected' : '') + '>Yes — lock item</option><option value="false"' + (op.Value !== 'true' ? ' selected' : '') + '>No — unlock item</option></select>'; }
+        if (def.Kind === 'Date') { return '<input type="date" data-k="Value" value="' + v + '">'; }
+        if (def.Kind === 'Integer' || def.Kind === 'Decimal') { return '<input type="text" inputmode="decimal" data-k="Value" value="' + v + '" placeholder="' + (def.Key === 'ProductionYear' ? '1999 or {Year}' : '0 – 10') + '">'; }
+        if (def.Key === 'Overview') { return '<textarea data-k="Value" placeholder="New overview…">' + v + '</textarea>'; }
+        var list = def.Kind === 'List' ? ' list="' + ({ Genres: 'dlGenres', Tags: 'dlTags', Studios: 'dlStudios' }[def.Key] || '') + '"' : (def.Key === 'OfficialRating' ? ' list="dlRatings"' : '');
+        return '<input type="text" data-k="Value" value="' + v + '"' + list + ' placeholder="' + (def.Kind === 'List' ? 'One | Two | Three' : 'New value') + '">';
+    }
+    function opArgs(op) {
+        var def = fieldDef(op.Field);
+        switch (op.Action) {
+            case 'set': return valueInput(op, def) + (def && def.Kind !== 'Boolean' ? '<label class="bme-row small" style="gap:.35em"><input type="checkbox" class="cb" data-k="OnlyIfEmpty"' + (op.OnlyIfEmpty ? ' checked' : '') + '>Only fill items where it\'s empty</label>' : '');
+            case 'clear': return '<div class="muted small" style="padding-top:.55em">Removes the value from every selected item.</div>';
+            case 'add': return valueInput(op, def) + '<div class="hint">Added to the existing list; duplicates are skipped.</div>';
+            case 'remove': return valueInput(op, def) + '<label class="bme-row small" style="gap:.35em"><input type="checkbox" class="cb" data-k="UseRegex"' + (op.UseRegex ? ' checked' : '') + '>Values are regular expressions</label>';
+            case 'append': case 'prepend': return valueInput(op, def);
+            case 'replace':
+                return '<div class="bme-row" style="flex-wrap:nowrap"><input type="text" data-k="Find" value="' + esc(op.Find || '') + '" placeholder="' + (def && def.Kind === 'List' ? 'Exact value, e.g. Sci-Fi' : 'Find…') + '"><span>→</span><input type="text" data-k="Replace" value="' + esc(op.Replace || '') + '" placeholder="Replace with (blank = remove)"></div>' +
+                    '<div class="bme-row small"><label class="bme-row" style="gap:.35em"><input type="checkbox" class="cb" data-k="UseRegex"' + (op.UseRegex ? ' checked' : '') + '>Regular expression <span class="hint">($1 for groups)</span></label><label class="bme-row" style="gap:.35em"><input type="checkbox" class="cb" data-k="CaseSensitive"' + (op.CaseSensitive ? ' checked' : '') + '>Match case</label></div>';
+            case 'case': return '<select data-k="Mode"><option value="title"' + (op.Mode === 'title' ? ' selected' : '') + '>Title Case</option><option value="sentence"' + (op.Mode === 'sentence' ? ' selected' : '') + '>Sentence case</option><option value="upper"' + (op.Mode === 'upper' ? ' selected' : '') + '>UPPERCASE</option><option value="lower"' + (op.Mode === 'lower' ? ' selected' : '') + '>lowercase</option></select>';
+            case 'copy': return '<select data-k="SourceField">' + fieldOptions(function (f) { return f.Kind !== 'Boolean'; }, true) + '</select><label class="bme-row small" style="gap:.35em"><input type="checkbox" class="cb" data-k="OnlyIfEmpty"' + (op.OnlyIfEmpty ? ' checked' : '') + '>Only where the target is empty</label>';
+            case 'trim': return '<div class="muted small" style="padding-top:.55em">Trims spaces, collapses double spaces' + (def && def.Kind === 'List' ? ', removes blanks and duplicates' : '') + '.</div>';
+            case 'sort': return '<div class="muted small" style="padding-top:.55em">Sorts the list alphabetically.</div>';
+            case 'lockFields': case 'unlockFields':
+                var chosen = splitList(op.Value).map(function (x) { return x.toLowerCase(); });
+                return '<div class="checkgrid">' + ['*'].concat(S.catalog.LockNames).map(function (n) { return '<label><input type="checkbox" class="cb" data-lock="' + esc(n) + '"' + (chosen.indexOf(n.toLowerCase()) >= 0 ? ' checked' : '') + '>' + (n === '*' ? '<b>All fields</b>' : esc(({ ProductionLocations: 'Countries', OfficialRating: 'Parental rating', Name: 'Title', Cast: 'Cast & crew' })[n] || n)) + '</label>'; }).join('') + '</div>';
+        }
+        return '';
+    }
+    function renderOps() {
+        if (!S.ops.length) { S.ops.push(newOp()); }
+        var host = $('#eOps');
+        host.innerHTML = S.ops.map(function (op, i) {
+            var noField = op.Action === 'lockFields' || op.Action === 'unlockFields';
+            var filt = fieldsFor(op.Action);
+            var fieldSel = noField ? '<div class="muted small" style="padding-top:.55em">Locked fields are skipped by metadata refreshes.</div>' : '<select data-k="Field">' + fieldOptions(filt, op.Action === 'set' || op.Action === 'clear' || op.Action === 'replace' || op.Action === 'copy') + '</select>';
+            return '<div class="op" data-i="' + i + '"><div class="num">' + (i + 1) + '</div>' +
+                '<select data-k="Action">' + ACTIONS.map(function (a) { return '<option value="' + a[0] + '"' + (a[0] === op.Action ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') + '</select>' +
+                fieldSel + '<div class="args">' + opArgs(op) + '</div>' +
+                '<div class="tools"><button class="btn ghost sm" data-mv="-1" title="Move up">↑</button><button class="btn ghost sm" data-mv="1" title="Move down">↓</button><button class="btn ghost sm" data-del title="Remove">✕</button></div></div>';
+        }).join('');
+        $$('.op', host).forEach(function (row) {
+            var i = parseInt(row.dataset.i, 10), op = S.ops[i];
+            var fs = row.querySelector('select[data-k=Field]');
+            if (fs) {
+                if (!Array.prototype.some.call(fs.options, function (o) { return o.value === op.Field; })) { op.Field = fs.options[0] ? fs.options[0].value : op.Field; }
+                fs.value = op.Field;
+            }
+            var ss = row.querySelector('select[data-k=SourceField]'); if (ss) { ss.value = op.SourceField || 'OriginalTitle'; }
+            $$('[data-k]', row).forEach(function (el) {
+                var k = el.dataset.k;
+                var evt = (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'date') ? 'change' : 'input';
+                el.addEventListener(evt, function () {
+                    op[k] = el.type === 'checkbox' ? el.checked : el.value;
+                    if (k === 'Action' || k === 'Field') {
+                        if (k === 'Field' || k === 'Action') { op.Value = op.Action === 'lockFields' || op.Action === 'unlockFields' ? '' : op.Value; }
+                        renderOps();
+                    }
+                    clearPreview();
+                });
+            });
+            $$('[data-lock]', row).forEach(function (cb) {
+                cb.addEventListener('change', function () { op.Value = $$('[data-lock]', row).filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.lock; }).join('|'); clearPreview(); });
+            });
+            row.querySelector('[data-del]').addEventListener('click', function () { S.ops.splice(i, 1); renderOps(); clearPreview(); });
+            $$('[data-mv]', row).forEach(function (b) {
+                b.addEventListener('click', function () { var j = i + parseInt(b.dataset.mv, 10); if (j < 0 || j >= S.ops.length) { return; } var t = S.ops[i]; S.ops[i] = S.ops[j]; S.ops[j] = t; renderOps(); clearPreview(); });
+            });
+        });
+    }
+    function cleanOps() {
+        return S.ops.map(function (o) {
+            var r = { Action: o.Action, Field: o.Field, Value: o.Value, Find: o.Find, Replace: o.Replace, UseRegex: !!o.UseRegex, CaseSensitive: !!o.CaseSensitive, OnlyIfEmpty: !!o.OnlyIfEmpty, Mode: o.Mode, SourceField: o.SourceField };
+            if (o.Action === 'lockFields' || o.Action === 'unlockFields') { r.Field = 'LockedFields'; }
+            return r;
+        });
+    }
+    function renderEditTarget() {
+        var n = S.selected.size;
+        $('#eNoSel').style.display = n ? 'none' : '';
+        $('#eMain').style.display = n ? '' : 'none';
+        var types = {}; S.selected.forEach(function (v) { types[v.Type] = (types[v.Type] || 0) + 1; });
+        var t = Object.keys(types).filter(function (k) { return k !== '?'; }).map(function (k) { return fmt(types[k]) + ' ' + (TYPE_LABELS[k] || k).toLowerCase(); }).join(', ');
+        $('#eTarget').innerHTML = 'Editing <b>' + fmt(n) + '</b> selected item' + (n === 1 ? '' : 's') + (t ? ' <span class="muted">(' + esc(t) + (types['?'] ? ', …' : '') + ')</span>' : '') + ' · <a href="#" id="eBack" style="color:var(--a)">change selection</a>';
+        var back = $('#eBack'); if (back) { back.addEventListener('click', function (e) { e.preventDefault(); showTab('find'); }); }
+        $('#bApply').textContent = 'Apply to ' + fmt(n) + ' item' + (n === 1 ? '' : 's');
+        updateSelUi();
+    }
+    function editRequest() { return { Target: { ItemIds: Array.from(S.selected.keys()) }, Operations: cleanOps(), LockEditedFields: $('#eLock').checked, Description: $('#eDesc').value.trim() || null }; }
+    function clearPreview() { $('#ePreview').innerHTML = ''; }
+
+    function previewHtml(p) {
+        var h = '<div class="stats"><div class="stat"><span class="small muted">Items examined</span><b>' + fmt(p.TotalItems) + '</b></div><div class="stat ok"><span class="small muted">Will change</span><b>' + fmt(p.ChangedItems) + '</b></div><div class="stat"><span class="small muted">Field changes</span><b>' + fmt(p.TotalChanges) + '</b></div><div class="stat' + (p.ErrorItems ? ' bad' : '') + '"><span class="small muted">Problems</span><b>' + fmt(p.ErrorItems) + '</b></div></div>';
+        (p.Warnings || []).slice(0, 30).forEach(function (w) { h += '<div class="warn small">' + esc(w) + '</div>'; });
+        if ((p.Warnings || []).length > 30) { h += '<div class="warn small">…and ' + (p.Warnings.length - 30) + ' more warnings.</div>'; }
+        var by = p.ChangesByField || {};
+        if (Object.keys(by).length) { h += '<div class="chips" style="margin-bottom:.8em">' + Object.keys(by).map(function (k) { return '<span class="tag" style="font-size:.85em">' + esc(k) + ': ' + fmt(by[k]) + '</span>'; }).join('') + '</div>'; }
+        if (!p.Items.length) { return h + '<div class="empty">Nothing would change — the selected items already have these values.</div>'; }
+        h += '<div class="scroll"><table><thead><tr><th>Item</th><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody>';
+        p.Items.forEach(function (it) {
+            if (it.Error) { h += '<tr><td><b>' + esc(it.Name) + '</b><div class="muted small">' + esc(it.Type) + '</div></td><td colspan="3"><div class="err small">' + esc(it.Error) + '</div></td></tr>'; return; }
+            it.Changes.forEach(function (c, j) {
+                h += '<tr>' + (j === 0 ? '<td rowspan="' + it.Changes.length + '" style="vertical-align:top"><b>' + esc(it.Name) + '</b><div class="muted small">' + esc(it.Type) + (it.Library ? ' · ' + esc(it.Library) : '') + '</div></td>' : '') +
+                    '<td class="small" style="white-space:nowrap">' + esc(c.Label) + '</td><td class="small">' + (c.Before ? '<span class="diff-old">' + esc(trunc(c.Before)) + '</span>' : '<span class="diff-empty">empty</span>') + '</td><td class="small">' + (c.After ? '<span class="diff-new">' + esc(trunc(c.After)) + '</span>' : '<span class="diff-empty">empty</span>') + '</td></tr>';
+            });
+        });
+        h += '</tbody></table></div>';
+        if (p.ChangedItems + p.ErrorItems > p.Items.length) { h += '<div class="muted small" style="margin-top:.5em">Showing the first ' + fmt(p.Items.length) + ' items.</div>'; }
+        return h;
+    }
+    function trunc(s) { s = String(s); return s.length > 300 ? s.substring(0, 297) + '…' : s; }
+
+    $('#bPreview').addEventListener('click', function () {
+        var btn = $('#bPreview'); busy(btn, true, 'Previewing…');
+        api('Preview', editRequest()).then(function (p) {
+            $('#ePreview').innerHTML = '<div class="bme-card"><h3>Preview <span class="muted small">— nothing has been saved yet</span></h3>' + previewHtml(p) + '</div>';
+            $('#ePreview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }).catch(function (e) { toast(e.message, true); }).finally(function () { busy(btn, false); });
+    });
+
+    // Preview in a modal, then apply on confirm. Used by Edit, Values, Import and Undo.
+    function previewThenApply(title, previewCall, applyCall, confirmLabel) {
+        var m = modal(title, '<div class="empty"><span class="spin"></span> Working out what will change…</div>', [{ label: 'Cancel' }]);
+        previewCall().then(function (p) {
+            m.body.innerHTML = previewHtml(p);
+            m.footer.innerHTML = '';
+            var cancel = document.createElement('button'); cancel.className = 'btn'; cancel.textContent = 'Cancel'; cancel.onclick = m.close; m.footer.appendChild(cancel);
+            if (p.ChangedItems > 0) {
+                var go = document.createElement('button'); go.className = 'btn pri'; go.textContent = (confirmLabel || 'Apply') + ' (' + fmt(p.ChangedItems) + ' item' + (p.ChangedItems === 1 ? '' : 's') + ')';
+                go.onclick = function () {
+                    busy(go, true, 'Starting…');
+                    applyCall().then(function (job) { m.close(); watchJob(job); }).catch(function (e) { busy(go, false); toast(e.message, true); });
+                };
+                m.footer.appendChild(go);
+            }
+        }).catch(function (e) { m.body.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+    }
+
+    $('#bApply').addEventListener('click', function () {
+        var req = editRequest();
+        previewThenApply('Apply ' + S.ops.length + ' edit' + (S.ops.length === 1 ? '' : 's') + ' to ' + fmt(S.selected.size) + ' items?', function () { return api('Preview', req); }, function () { return api('Apply', req); });
+    });
+    $('#bRefresh').addEventListener('click', function () {
+        var mode = $('#eRefreshMode').value, btn = $('#bRefresh');
+        if ((mode === 'metadata' || mode === 'all') && !confirm('Replace ALL metadata for ' + fmt(S.selected.size) + ' items with what the online providers return? Unlocked manual edits will be lost.')) { return; }
+        busy(btn, true, 'Queuing…');
+        api('Refresh', { Target: { ItemIds: Array.from(S.selected.keys()) }, Mode: mode }).then(function (r) { toast('Queued ' + fmt(r.Queued) + ' refreshes — progress shows in Dashboard → Scheduled tasks / activity.'); })
+            .catch(function (e) { toast(e.message, true); }).finally(function () { busy(btn, false); });
+    });
+
+    // ------------------------------------------------------------ jobs
+    var pillTimer = null;
+    function watchJob(job) {
+        var m = modal('Saving changes…', '<p id="jText">Starting…</p><div class="bar"><i id="jBar"></i></div><div id="jErr" style="margin-top:1em"></div>', [{ label: 'Cancel job', cls: 'danger', onClick: function (mm, b) { busy(b, true, 'Cancelling…'); api('Jobs/' + job.Id + '/Cancel', {}).catch(function () { }); } }], { locked: true });
+        function tick() {
+            api('Jobs/' + job.Id).then(function (j) {
+                var pct = j.Total ? Math.round(j.Processed * 100 / j.Total) : 0;
+                var bar = m.el.querySelector('#jBar'), txt = m.el.querySelector('#jText');
+                if (bar) { bar.style.width = pct + '%'; }
+                if (txt) { txt.innerHTML = '<b>' + esc(j.Description) + '</b><br>' + fmt(j.Processed) + ' of ' + fmt(j.Total) + ' items processed · ' + fmt(j.Changed) + ' saved' + (j.ErrorCount ? ' · <span style="color:var(--bad)">' + fmt(j.ErrorCount) + ' errors</span>' : ''); }
+                if (j.State === 'Running') { setTimeout(tick, 700); return; }
+                m.close();
+                var errs = (j.Errors || []).map(function (e) { return '<div class="err small">' + esc(e) + '</div>'; }).join('');
+                var good = j.State === 'Completed' && !j.ErrorCount;
+                var r = modal(good ? 'Done' : (j.State === 'Cancelled' ? 'Cancelled' : 'Finished with problems'),
+                    '<p><b>' + fmt(j.Changed) + '</b> item' + (j.Changed === 1 ? '' : 's') + ' updated.' + (j.State === 'Cancelled' ? ' The job was cancelled part-way; items already saved can still be undone.' : '') + '</p>' + errs,
+                    [{ label: 'Close' }].concat(j.HistoryId ? [{ label: 'Undo this', cls: 'danger', onClick: function (mm) { mm.close(); undo(j.HistoryId, j.Description); } }] : []));
+                if (S.lastFilter) { search(S.start); }
+                clearPreview(); loadSuggestions();
+            }).catch(function (e) { setTimeout(tick, 1500); });
+        }
+        tick();
+    }
+    function pollCurrentJob() {
+        api('Jobs/Current').then(function (j) {
+            var pill = $('#bmeJobPill');
+            if (j && j.State === 'Running') {
+                pill.classList.add('on'); $('#bmeJobPillText').textContent = j.Description + ' — ' + fmt(j.Processed) + '/' + fmt(j.Total);
+                pill.onclick = function () { watchJob(j); };
+                pillTimer = setTimeout(pollCurrentJob, 2000);
+            } else { pill.classList.remove('on'); }
+        }).catch(function () { });
+    }
+
+    // ------------------------------------------------------------ VALUES
+    function scopeTarget(scope) {
+        if (scope === 'selected') { return { ItemIds: Array.from(S.selected.keys()) }; }
+        if (scope === 'filter') { return { Filter: S.lastFilter || readFilter() }; }
+        return { Filter: {} };
+    }
+    function loadValues() {
+        var scope = $('#vScope').value;
+        if (scope === 'selected' && !S.selected.size) { toast('No items selected.', true); return; }
+        var btn = $('#bLoadValues'); busy(btn, true, 'Loading…');
+        api('Values', { Target: scopeTarget(scope), Field: $('#vField').value }).then(function (vals) { S.values = vals || []; S.vChecked.clear(); renderValues(); })
+            .catch(function (e) { toast(e.message, true); }).finally(function () { busy(btn, false); });
+    }
+    $('#bLoadValues').addEventListener('click', loadValues);
+    $('#vField').addEventListener('change', loadValues);
+    $('#vScope').addEventListener('change', function () { if (S.values.length) { loadValues(); } });
+    $('#vQuery').addEventListener('input', renderValues);
+    function renderValues() {
+        var q = $('#vQuery').value.trim().toLowerCase();
+        var list = S.values.filter(function (v) { return !q || v.Value.toLowerCase().indexOf(q) >= 0; });
+        var max = S.values.reduce(function (m, v) { return Math.max(m, v.Count); }, 1);
+        $('#vCount').innerHTML = '<b>' + fmt(S.values.length) + '</b> distinct values' + (q ? ' · ' + fmt(list.length) + ' shown' : '');
+        var body = $('#vBody');
+        if (!list.length) { body.innerHTML = '<tr><td colspan="4" class="empty">No values.</td></tr>'; updateVButtons(); return; }
+        body.innerHTML = list.slice(0, 2000).map(function (v) {
+            return '<tr><td><input type="checkbox" class="cb" data-v="' + esc(v.Value) + '"' + (S.vChecked.has(v.Value) ? ' checked' : '') + '></td><td><b>' + esc(v.Value) + '</b></td>' +
+                '<td><div class="bme-row" style="flex-wrap:nowrap"><div class="vbar" style="width:' + Math.max(2, Math.round(v.Count * 100 / max)) + '%"></div><span class="small">' + fmt(v.Count) + '</span></div></td>' +
+                '<td style="white-space:nowrap"><button class="btn sm ghost" data-act="find" data-v="' + esc(v.Value) + '">Show items</button><button class="btn sm ghost" data-act="rename" data-v="' + esc(v.Value) + '">Rename</button><button class="btn sm ghost danger" data-act="delete" data-v="' + esc(v.Value) + '">Delete</button></td></tr>';
+        }).join('');
+        $$('input[data-v]', body).forEach(function (cb) { cb.addEventListener('change', function () { if (cb.checked) { S.vChecked.add(cb.dataset.v); } else { S.vChecked.delete(cb.dataset.v); } updateVButtons(); }); });
+        $$('button[data-act]', body).forEach(function (b) {
+            b.addEventListener('click', function () {
+                var v = b.dataset.v;
+                if (b.dataset.act === 'find') { showValueItems(v); }
+                if (b.dataset.act === 'rename') { renameValues([v]); }
+                if (b.dataset.act === 'delete') { deleteValues([v]); }
+            });
+        });
+        updateVButtons();
+    }
+    function updateVButtons() { var n = S.vChecked.size; $('#bVMerge').disabled = !n; $('#bVDelete').disabled = !n; $('#bVMerge').textContent = n > 1 ? 'Merge ' + n + ' checked into…' : 'Rename checked…'; $('#bVDelete').textContent = n ? 'Delete ' + n + ' checked…' : 'Delete checked…'; }
+    $('#vAll').addEventListener('change', function (e) { var q = $('#vQuery').value.trim().toLowerCase(); S.values.forEach(function (v) { if (!q || v.Value.toLowerCase().indexOf(q) >= 0) { if (e.target.checked) { S.vChecked.add(v.Value); } else { S.vChecked.delete(v.Value); } } }); renderValues(); });
+    $('#bVMerge').addEventListener('click', function () { renameValues(Array.from(S.vChecked)); });
+    $('#bVDelete').addEventListener('click', function () { deleteValues(Array.from(S.vChecked)); });
+
+    function reEscape(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function valueOps(field, olds, replacement) {
+        var def = fieldDef(field);
+        if (def.Kind === 'List') {
+            if (replacement === null) { return [{ Action: 'remove', Field: field, Value: olds.join('|') }]; }
+            return olds.map(function (o) { return { Action: 'replace', Field: field, Find: o, Replace: replacement }; });
+        }
+        var none = olds.indexOf('(none)') >= 0;
+        var real = olds.filter(function (o) { return o !== '(none)'; });
+        var ops = [];
+        if (real.length) { ops.push({ Action: 'replace', Field: field, Find: '^(' + real.map(reEscape).join('|') + ')$', Replace: replacement === null ? '' : replacement.replace(/\$/g, '$$$$'), UseRegex: true }); }
+        if (none && replacement) { ops.push({ Action: 'set', Field: field, Value: replacement, OnlyIfEmpty: true }); }
+        return ops;
+    }
+    function valueApply(olds, replacement, verb) {
+        var field = $('#vField').value, label = $('#vField').selectedOptions[0].textContent;
+        var ops = valueOps(field, olds, replacement);
+        if (!ops.length) { toast('Nothing to do.', true); return; }
+        var req = { Target: scopeTarget($('#vScope').value), Operations: ops, LockEditedFields: $('#eLock').checked, Description: verb + ' ' + label.toLowerCase() + ': ' + olds.slice(0, 4).join(', ') + (olds.length > 4 ? '…' : '') + (replacement ? ' → ' + replacement : '') };
+        previewThenApply(verb + ' ' + label.toLowerCase(), function () { return api('Preview', req); }, function () { return api('Apply', req).then(function (j) { setTimeout(loadValues, 400); return j; }); }, verb);
+    }
+    function renameValues(olds) {
+        var label = $('#vField').selectedOptions[0].textContent.toLowerCase();
+        var m = modal(olds.length > 1 ? 'Merge ' + olds.length + ' values' : 'Rename "' + olds[0] + '"',
+            '<p class="small muted">' + (olds.length > 1 ? 'These ' + label + ' will become one value everywhere in the chosen scope:' : 'Every item in the chosen scope that has this value gets the new one:') + '</p><div class="chips" style="margin-bottom:1em">' + olds.map(function (o) { return '<span class="tag">' + esc(o) + '</span>'; }).join('') + '</div><label class="lbl">New value</label><input type="text" id="vNew" list="' + ({ Genres: 'dlGenres', Tags: 'dlTags', Studios: 'dlStudios', OfficialRating: 'dlRatings' }[$('#vField').value] || '') + '" value="' + esc(olds.length === 1 ? olds[0] : olds[0]) + '">',
+            [{ label: 'Cancel' }, { label: 'Preview', cls: 'pri', onClick: function (mm) { var v = mm.el.querySelector('#vNew').value.trim(); if (!v) { toast('Enter a value.', true); return; } mm.close(); valueApply(olds, v, olds.length > 1 ? 'Merge' : 'Rename'); } }], { width: '560px' });
+        var inp = m.el.querySelector('#vNew'); inp.focus(); inp.select();
+    }
+    function deleteValues(olds) { valueApply(olds, null, 'Delete'); }
+    function showValueItems(v) {
+        var field = $('#vField').value;
+        $('#bReset').click();
+        var map = { Genres: '#fGenres', Tags: '#fTags', Studios: '#fStudios', OfficialRating: '#fRatings' };
+        if (map[field]) { $(map[field]).value = v; }
+        else if (field === 'ProductionYear') { $('#fYearFrom').value = v; $('#fYearTo').value = v; }
+        else { $('#fFieldKey').value = field; $('#fFieldQuery').value = v === '(none)' ? '' : v; if (v === '(none)') { S.missing.add(field); } }
+        $('#fMore').open = true; updateMoreCount(); showTab('find'); search(0);
+    }
+
+    // ------------------------------------------------------------ CSV
+    $('#bExport').addEventListener('click', function () {
+        var scope = $('#xScope').value;
+        if (scope === 'selected' && !S.selected.size) { toast('No items selected — choose another option or select items first.', true); return; }
+        var cols = $$('#xCols input').filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+        var btn = $('#bExport'); busy(btn, true, 'Exporting…');
+        fetch(ApiClient.getUrl('BulkMetadata/Export'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'MediaBrowser Token="' + token() + '"', 'X-Emby-Token': token() }, body: JSON.stringify({ Target: scopeTarget(scope), Columns: cols }) })
+            .then(function (r) { if (!r.ok) { return r.text().then(function (t) { var d = {}; try { d = JSON.parse(t); } catch (e) { } throw new Error(d.Error || 'Export failed (HTTP ' + r.status + ')'); }); } return r.blob(); })
+            .then(function (blob) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'jellyfin-metadata-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.csv'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); })
+            .catch(function (e) { toast(e.message, true); }).finally(function () { busy(btn, false); });
+    });
+    $('#iFile').addEventListener('change', function (e) {
+        var f = e.target.files[0]; S.importText = null; $('#bImportPreview').disabled = true; $('#iPreview').innerHTML = '';
+        if (!f) { return; }
+        var rd = new FileReader();
+        rd.onload = function () { S.importText = rd.result; $('#bImportPreview').disabled = false; };
+        rd.onerror = function () { toast('Could not read that file.', true); };
+        rd.readAsText(f);
+    });
+    $('#bImportPreview').addEventListener('click', function () {
+        var req = { Csv: S.importText, BlankMeansClear: $('#iBlank').checked, LockEditedFields: $('#iLock').checked };
+        previewThenApply('Import spreadsheet', function () { return api('Import/Preview', req); }, function () { return api('Import/Apply', req); }, 'Import');
+    });
+
+    // ------------------------------------------------------------ HISTORY
+    function loadHistory() {
+        api('History').then(function (list) {
+            var body = $('#hBody');
+            if (!list || !list.length) { body.innerHTML = '<tr><td colspan="6" class="empty">No bulk changes yet.</td></tr>'; return; }
+            body.innerHTML = list.map(function (h) {
+                var when = new Date(h.TimestampUtc);
+                var status = h.UndoneBy ? '<span class="tag">undone</span>' : (h.UndoOf ? '<span class="tag">undo</span>' : '');
+                return '<tr><td class="small" style="white-space:nowrap">' + esc(when.toLocaleString()) + '</td><td>' + esc(h.Description) + ' ' + status + '</td><td>' + fmt(h.ItemCount) + '</td><td class="small">' + (h.Fields || []).map(function (f) { return '<span class="tag">' + esc(f) + '</span>'; }).join('') + '</td><td class="small">' + esc(h.User || '') + '</td>' +
+                    '<td style="white-space:nowrap"><button class="btn sm ghost" data-view="' + esc(h.Id) + '">View</button><button class="btn sm' + (h.UndoneBy ? ' ghost' : '') + '" data-undo="' + esc(h.Id) + '" data-desc="' + esc(h.Description) + '">Undo</button><button class="btn sm ghost" data-delh="' + esc(h.Id) + '" title="Remove from history (does not change metadata)">🗑</button></td></tr>';
+            }).join('');
+            $$('[data-view]', body).forEach(function (b) { b.addEventListener('click', function () { viewHistory(b.dataset.view); }); });
+            $$('[data-undo]', body).forEach(function (b) { b.addEventListener('click', function () { undo(b.dataset.undo, b.dataset.desc); }); });
+            $$('[data-delh]', body).forEach(function (b) { b.addEventListener('click', function () { if (confirm('Remove this entry from history? Your metadata is not changed, but you will no longer be able to undo it.')) { api('History/' + b.dataset.delh, undefined, 'DELETE').then(loadHistory).catch(function (e) { toast(e.message, true); }); } }); });
+        }).catch(function (e) { toast(e.message, true); });
+    }
+    $('#bHistReload').addEventListener('click', loadHistory);
+    function viewHistory(id) {
+        var m = modal('Batch details', '<div class="empty"><span class="spin"></span></div>');
+        api('History/' + id).then(function (h) {
+            var rows = '';
+            h.Items.forEach(function (it) { it.Changes.forEach(function (c, j) { rows += '<tr>' + (j === 0 ? '<td rowspan="' + it.Changes.length + '" style="vertical-align:top"><b>' + esc(it.Name) + '</b><div class="muted small">' + esc(it.Type) + '</div></td>' : '') + '<td class="small">' + esc(c.Label) + '</td><td class="small">' + (c.Before ? '<span class="diff-old">' + esc(trunc(c.Before)) + '</span>' : '<span class="diff-empty">empty</span>') + '</td><td class="small">' + (c.After ? '<span class="diff-new">' + esc(trunc(c.After)) + '</span>' : '<span class="diff-empty">empty</span>') + '</td></tr>'; }); });
+            m.body.innerHTML = '<p><b>' + esc(h.Description) + '</b><br><span class="muted small">' + esc(new Date(h.TimestampUtc).toLocaleString()) + (h.User ? ' · ' + esc(h.User) : '') + ' · ' + fmt(h.ItemCount) + ' items</span></p><div class="scroll"><table><thead><tr><th>Item</th><th>Field</th><th>Before</th><th>After</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (h.ItemCount > h.Items.length ? '<div class="muted small">Showing first ' + h.Items.length + ' items.</div>' : '');
+        }).catch(function (e) { m.body.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+    }
+    function undo(id, desc) {
+        previewThenApply('Undo "' + (desc || 'batch') + '"', function () { return api('History/' + id + '/Undo/Preview', {}); }, function () { return api('History/' + id + '/Undo', {}).then(function (j) { setTimeout(loadHistory, 1000); return j; }); }, 'Undo');
+    }
+
+    // ------------------------------------------------------------ boot
+    page.addEventListener('pageshow', function () { if (!S.catalog) { init(); } else { pollCurrentJob(); } });
+    page.addEventListener('pagehide', function () { $('#bmeSelbar').classList.remove('on'); if (pillTimer) { clearTimeout(pillTimer); } });
+    if (window.ApiClient) { init(); }
+})();
+</script>
+</div>
+</body>
+</html>
