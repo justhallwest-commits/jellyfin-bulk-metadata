@@ -29,7 +29,9 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Work out version
         id: ver
@@ -46,6 +48,9 @@ jobs:
           # Jellyfin wants four-part versions
           while [[ "$(echo "$V" | tr -cd '.' | wc -c)" -lt 3 ]]; do V="$V.0"; done
           echo "version=$V" >> "$GITHUB_OUTPUT"
+          # Jellyfin 12 build: same release, last number 12 so a 12.x server picks it
+          IFS='.' read -r a b c _ <<< "$V"
+          echo "version12=$a.$b.$c.12" >> "$GITHUB_OUTPUT"
           echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
           echo "Version $V (release: $RELEASE)"
 
@@ -82,10 +87,34 @@ jobs:
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
           echo "md5=$(md5sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
+      - name: Build and package for Jellyfin 12 (.NET 10)
+        id: pkg12
+        shell: bash
+        run: |
+          V=${{ steps.ver.outputs.version12 }}
+          for JV in 12.0.0 12.0.1 12.1.0 12.2.0 12.3.0 12.4.0; do
+            rm -rf $PLUGIN_DIR/bin $PLUGIN_DIR/obj out12
+            if dotnet publish $PLUGIN_DIR --configuration Release --output out12 -p:JellyfinVersion=$JV -p:JellyfinTfm=net10.0 -p:Version=$V -p:AssemblyVersion=$V -p:FileVersion=$V; then
+              echo "Built against Jellyfin $JV"; break
+            fi
+            JV=""
+          done
+          [ -n "$JV" ] || exit 1
+          mkdir -p pkg12
+          cp out12/Jellyfin.Plugin.BulkMetadata.dll pkg12/
+          sed -e "s/\"version\": \"[^\"]*\"/\"version\": \"$V\"/" -e "s/\"targetAbi\": \"[^\"]*\"/\"targetAbi\": \"$JV.0\"/" pkg/meta.json > pkg12/meta.json
+          ZIP="bulk-metadata-editor_${V}_jellyfin-12.zip"
+          (cd pkg12 && zip -q -r "../$ZIP" .)
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "abi=$JV.0" >> "$GITHUB_OUTPUT"
+          echo "md5=$(md5sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.pkg.outputs.zip }}
-          path: ${{ steps.pkg.outputs.zip }}
+          path: |
+            ${{ steps.pkg.outputs.zip }}
+            ${{ steps.pkg12.outputs.zip }}
 
       - name: Create GitHub release
         if: steps.ver.outputs.release == 'true'
@@ -95,9 +124,9 @@ jobs:
         run: |
           TAG="v${{ steps.ver.outputs.version }}"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" "${{ steps.pkg.outputs.zip }}" --title "Bulk Metadata Editor $TAG" --notes "Install via the plugin repository: https://raw.githubusercontent.com/${{ github.repository }}/main/manifest.json" --target "${GITHUB_SHA}"
+            gh release create "$TAG" "${{ steps.pkg.outputs.zip }}" "${{ steps.pkg12.outputs.zip }}" --title "Bulk Metadata Editor $TAG" --notes "Install via the plugin repository: https://raw.githubusercontent.com/${{ github.repository }}/main/manifest.json" --target "${GITHUB_SHA}"
           else
-            gh release upload "$TAG" "${{ steps.pkg.outputs.zip }}" --clobber
+            gh release upload "$TAG" "${{ steps.pkg.outputs.zip }}" "${{ steps.pkg12.outputs.zip }}" --clobber
           fi
 
       - name: Update manifest.json
@@ -109,6 +138,9 @@ jobs:
           git fetch origin main
           git checkout -B main origin/main
           python3 .github/scripts/update_manifest.py "$V" "$URL" "${{ steps.pkg.outputs.md5 }}" "$TARGET_ABI" "Release $V"
+          V12=${{ steps.ver.outputs.version12 }}
+          URL12="https://github.com/${{ github.repository }}/releases/download/v${V}/${{ steps.pkg12.outputs.zip }}"
+          python3 .github/scripts/update_manifest.py "$V12" "$URL12" "${{ steps.pkg12.outputs.md5 }}" "${{ steps.pkg12.outputs.abi }}" "Release $V for Jellyfin 12"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add manifest.json

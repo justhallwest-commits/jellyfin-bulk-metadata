@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Defaults to Jellyfin 10.10. For Jellyfin 12: -p:JellyfinVersion=12.0.0 -p:JellyfinTfm=net10.0 -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <JellyfinVersion Condition="'$(JellyfinVersion)' == ''">10.10.7</JellyfinVersion>
+    <JellyfinTfm Condition="'$(JellyfinTfm)' == ''">net8.0</JellyfinTfm>
+    <TargetFramework>$(JellyfinTfm)</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.BulkMetadata</RootNamespace>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
@@ -13,8 +16,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.10.7" ExcludeAssets="runtime" />
-    <PackageReference Include="Jellyfin.Model" Version="10.10.7" ExcludeAssets="runtime" />
+    <PackageReference Include="Jellyfin.Controller" Version="$(JellyfinVersion)" ExcludeAssets="runtime" />
+    <PackageReference Include="Jellyfin.Model" Version="$(JellyfinVersion)" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>
