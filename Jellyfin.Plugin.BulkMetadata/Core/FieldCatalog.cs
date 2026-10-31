@@ -72,6 +72,9 @@ public static class FieldCatalog
         new("PreferredMetadataCountryCode", "Metadata country", FieldKind.Text),
         new("IsLocked", "Lock item (block all metadata refreshes)", FieldKind.Boolean),
         new("LockedFields", "Locked fields", FieldKind.List),
+        new("IndexNumber", "Number (episode, volume or track)", FieldKind.Integer),
+        new("SeriesName", "Book series (books & audiobooks)", FieldKind.Text),
+        new("Authors", "Authors (books & audiobooks)", FieldKind.List, "Cast"),
     };
 
     /// <summary>Common provider ids offered in the UI.</summary>
