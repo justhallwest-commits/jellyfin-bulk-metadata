@@ -124,6 +124,7 @@
     <button class="bme-tab" data-tab="values">Genres, tags &amp; studios</button>
     <button class="bme-tab" data-tab="csv">Spreadsheet (CSV)</button>
     <button class="bme-tab" data-tab="history">History &amp; undo</button>
+    <button class="bme-tab" data-tab="jf12">Versions, collections &amp; libraries</button>
 </div>
 
 <!-- ============================== FIND ============================== -->
@@ -279,6 +280,52 @@
     <div class="bme-results-head"><div class="muted">Every bulk change is recorded here. Undo restores the exact previous values.</div><button class="btn sm" id="bHistReload">Reload</button></div>
     <div class="bme-card" style="padding:0;overflow-x:auto">
         <table><thead><tr><th>When</th><th>What</th><th>Items</th><th>Fields</th><th>By</th><th></th></tr></thead><tbody id="hBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody></table>
+    </div>
+</section>
+
+<!-- ============================== VERSIONS / COLLECTIONS / LIBRARIES ============================== -->
+<section class="bme-panel" data-panel="jf12">
+    <div class="bme-card">
+        <h3 style="margin-top:0">Versions</h3>
+        <p class="muted small" style="margin-top:0">Jellyfin 12 groups copies of the same movie or episode (1080p and 4K, director's cut…) into one title with several versions. Find titles that have more than one, or fix grouping by hand: <b>merge</b> the selected items into one title, or <b>split</b> a title back into separate items.</p>
+        <div class="bme-row" style="gap:.5em;flex-wrap:wrap">
+            <button class="btn" id="jvFind">Find titles with several versions</button>
+            <button class="btn" id="jvMerge">Merge selected into one title</button>
+            <button class="btn danger" id="jvSplit">Split selected into separate items</button>
+        </div>
+        <div id="jvOut" style="margin-top:.8em"></div>
+    </div>
+
+    <div class="bme-card">
+        <h3 style="margin-top:0">Collections &amp; playlists</h3>
+        <p class="muted small" style="margin-top:0">Add the selected items to a collection or playlist — or take them out — in one go.</p>
+        <div class="bme-grid" style="grid-template-columns:auto 1fr 1fr">
+            <div><label class="lbl">Type</label><select id="jcKind"><option value="BoxSet">Collection</option><option value="Playlist">Playlist</option></select></div>
+            <div><label class="lbl">Which one</label><select id="jcTarget"><option value="">Loading…</option></select></div>
+            <div><label class="lbl">New name <span class="hint">(when "New…" is chosen)</span></label><input type="text" id="jcNew" placeholder="e.g. Halloween Night"></div>
+        </div>
+        <div class="bme-row" style="gap:.5em;margin-top:.8em">
+            <button class="btn pri" id="jcAdd">Add selected</button>
+            <button class="btn danger" id="jcRemove">Remove selected</button>
+        </div>
+        <div id="jcOut" class="muted small" style="margin-top:.6em"></div>
+    </div>
+
+    <div class="bme-card">
+        <h3 style="margin-top:0">Library settings side by side</h3>
+        <p class="muted small" style="margin-top:0">Jellyfin 12 moved subtitle settings and "More like this" sources into each library. Compare them here and copy one library's settings to others.</p>
+        <div class="scroll"><table id="jlTable"><tbody><tr><td class="empty"><span class="spin"></span></td></tr></tbody></table></div>
+        <div class="bme-grid" style="grid-template-columns:1fr 2fr;margin-top:.9em">
+            <div><label class="lbl">Copy from</label><select id="jlFrom"></select></div>
+            <div><label class="lbl">To</label><div id="jlTo" class="checkgrid"></div></div>
+        </div>
+        <div class="checkgrid" id="jlGroups" style="margin-top:.6em">
+            <label><input type="checkbox" class="cb" value="subs" checked>Subtitle downloads</label>
+            <label><input type="checkbox" class="cb" value="similar" checked>"More like this" sources</label>
+            <label><input type="checkbox" class="cb" value="segments">Media segment providers</label>
+            <label><input type="checkbox" class="cb" value="images">Trickplay &amp; chapter images</label>
+        </div>
+        <div class="bme-row" style="margin-top:.8em"><button class="btn pri" id="jlCopy">Copy settings</button></div>
     </div>
 </section>
 
@@ -897,6 +944,131 @@
     function undo(id, desc) {
         previewThenApply('Undo "' + (desc || 'batch') + '"', function () { return api('History/' + id + '/Undo/Preview', {}); }, function () { return api('History/' + id + '/Undo', {}).then(function (j) { setTimeout(loadHistory, 1000); return j; }); }, 'Undo');
     }
+
+
+    // ------------------------------------------------------------ versions / collections / libraries
+    function jf(method, path, query, body) {
+        var opts = { method: method, headers: { 'Authorization': 'MediaBrowser Token="' + token() + '"' } };
+        if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        return fetch(ApiClient.getUrl(path, query || {}), opts).then(function (r) {
+            if (r.status === 204) { return null; }
+            return r.text().then(function (t) { var d = null; try { d = t ? JSON.parse(t) : null; } catch (e) { /* text */ } if (!r.ok) { throw new Error((d && (d.title || d.detail)) || t || ('HTTP ' + r.status)); } return d; });
+        });
+    }
+    function selectedIds(types) {
+        var ids = []; S.selected.forEach(function (v, id) { if (!types || types.indexOf(v.Type) >= 0) { ids.push(id); } }); return ids;
+    }
+    var VIDEO_TYPES = ['Movie', 'Episode', 'Video', 'MusicVideo'];
+
+    $('#jvFind').addEventListener('click', function () {
+        var b = this; busy(b, true, 'Searching…');
+        jf('GET', 'Users/' + ApiClient.getCurrentUserId() + '/Items', { Recursive: true, IncludeItemTypes: 'Movie,Episode', Fields: 'MediaSourceCount', EnableImages: false, Limit: 20000 }).then(function (r) {
+            var list = (r.Items || []).filter(function (i) { return (i.MediaSourceCount || 1) > 1; });
+            $('#jvOut').innerHTML = list.length ? '<div class="muted small">' + fmt(list.length) + ' titles have more than one version. Click to select them for editing.</div><div class="bme-row" style="flex-wrap:wrap;gap:.35em;margin-top:.4em">' +
+                list.slice(0, 300).map(function (i) { return '<button class="chip" data-id="' + esc(i.Id) + '" data-t="' + esc(i.Type) + '">' + esc(i.SeriesName ? i.SeriesName + ' – ' + i.Name : i.Name) + ' <b>×' + i.MediaSourceCount + '</b></button>'; }).join('') + '</div>'
+                : '<div class="muted small">No titles with more than one version.</div>';
+            $$('#jvOut .chip').forEach(function (c) { c.addEventListener('click', function () { S.selected.set(c.dataset.id, { Name: c.textContent, Type: c.dataset.t }); c.classList.add('on'); updateSelUi(); }); });
+        }).catch(function (e) { toast(e.message, true); }).finally(function () { busy(b, false); });
+    });
+    $('#jvMerge').addEventListener('click', function () {
+        var ids = selectedIds(VIDEO_TYPES);
+        if (ids.length < 2) { toast('Select at least two movies or episodes (on Find items) to merge.', true); return; }
+        if (!confirm('Merge ' + ids.length + ' items into one title with ' + ids.length + ' versions?')) { return; }
+        jf('POST', 'Videos/MergeVersions', { ids: ids.join(',') }).then(function () { toast('Merged into one title.'); S.selected.clear(); updateSelUi(); }).catch(function (e) { toast(e.message, true); });
+    });
+    $('#jvSplit').addEventListener('click', function () {
+        var ids = selectedIds(VIDEO_TYPES);
+        if (!ids.length) { toast('Select the titles to split first.', true); return; }
+        if (!confirm('Split ' + ids.length + ' title(s) back into separate items?')) { return; }
+        Promise.all(ids.map(function (id) { return jf('DELETE', 'Videos/' + id + '/AlternateSources'); })).then(function () { toast('Split ' + ids.length + ' title(s).'); }).catch(function (e) { toast(e.message, true); });
+    });
+
+    function loadTargets() {
+        var kind = $('#jcKind').value;
+        jf('GET', 'Users/' + ApiClient.getCurrentUserId() + '/Items', { Recursive: true, IncludeItemTypes: kind, SortBy: 'SortName', EnableImages: false }).then(function (r) {
+            $('#jcTarget').innerHTML = '<option value="__new">New ' + (kind === 'BoxSet' ? 'collection' : 'playlist') + '…</option>' + (r.Items || []).map(function (i) { return '<option value="' + esc(i.Id) + '">' + esc(i.Name) + '</option>'; }).join('');
+            if ((r.Items || []).length) { $('#jcTarget').selectedIndex = 1; }
+        }).catch(function (e) { $('#jcTarget').innerHTML = '<option value="__new">New…</option>'; toast(e.message, true); });
+    }
+    $('#jcKind').addEventListener('change', loadTargets);
+    function collectionAction(add) {
+        var ids = selectedIds(), kind = $('#jcKind').value, target = $('#jcTarget').value, out = $('#jcOut');
+        if (!ids.length) { toast('Select items on Find items first.', true); return; }
+        var p;
+        if (target === '__new') {
+            if (!add) { toast('Pick an existing ' + (kind === 'BoxSet' ? 'collection' : 'playlist') + ' to remove from.', true); return; }
+            var name = $('#jcNew').value.trim(); if (!name) { toast('Type a name for the new one.', true); return; }
+            p = kind === 'BoxSet'
+                ? jf('POST', 'Collections', { name: name, ids: ids.join(',') })
+                : jf('POST', 'Playlists', null, { Name: name, Ids: ids, UserId: ApiClient.getCurrentUserId() });
+        } else if (kind === 'BoxSet') {
+            p = jf(add ? 'POST' : 'DELETE', 'Collections/' + target + '/Items', { ids: ids.join(',') });
+        } else if (add) {
+            p = jf('POST', 'Playlists/' + target + '/Items', { ids: ids.join(','), userId: ApiClient.getCurrentUserId() });
+        } else {
+            p = jf('GET', 'Playlists/' + target + '/Items', { userId: ApiClient.getCurrentUserId() }).then(function (r) {
+                var want = {}; ids.forEach(function (i) { want[i.replace(/-/g, '')] = true; });
+                var entries = (r.Items || []).filter(function (i) { return want[String(i.Id).replace(/-/g, '')]; }).map(function (i) { return i.PlaylistItemId; }).filter(Boolean);
+                if (!entries.length) { return null; }
+                return jf('DELETE', 'Playlists/' + target + '/Items', { entryIds: entries.join(',') });
+            });
+        }
+        p.then(function () { out.textContent = (add ? 'Added ' : 'Removed ') + fmt(ids.length) + ' item(s).'; toast('Done'); if (target === '__new') { loadTargets(); } })
+            .catch(function (e) { toast(e.message, true); });
+    }
+    $('#jcAdd').addEventListener('click', function () { collectionAction(true); });
+    $('#jcRemove').addEventListener('click', function () { collectionAction(false); });
+
+    var libs12 = [];
+    function yes(v) { return v ? '✔' : '—'; }
+    function similarOf(o) { return (o.TypeOptions || []).filter(function (t) { return (t.SimilarItemProviders || []).length; }).map(function (t) { return t.Type + ': ' + t.SimilarItemProviders.join(', '); }).join('; ') || '—'; }
+    function loadLibs12() {
+        jf('GET', 'Library/VirtualFolders').then(function (r) {
+            libs12 = (r || []).filter(function (l) { return l.LibraryOptions; });
+            var rows = [
+                ['Subtitle languages', function (o) { return (o.SubtitleDownloadLanguages || []).join(', ') || '—'; }],
+                ['Skip if embedded subtitles', function (o) { return yes(o.SkipSubtitlesIfEmbeddedSubtitlesPresent); }],
+                ['Skip if audio matches', function (o) { return yes(o.SkipSubtitlesIfAudioTrackMatches); }],
+                ['Perfect match only', function (o) { return yes(o.RequirePerfectSubtitleMatch); }],
+                ['Save subtitles with media', function (o) { return yes(o.SaveSubtitlesWithMedia); }],
+                ['"More like this" sources', similarOf],
+                ['Media segments off for', function (o) { return (o.DisabledMediaSegmentProviders || []).join(', ') || 'none'; }],
+                ['Trickplay images', function (o) { return yes(o.EnableTrickplayImageExtraction); }],
+                ['Chapter images', function (o) { return yes(o.EnableChapterImageExtraction); }]
+            ];
+            $('#jlTable').innerHTML = '<thead><tr><th></th>' + libs12.map(function (l) { return '<th>' + esc(l.Name) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+                rows.map(function (row) { return '<tr><td class="small"><b>' + esc(row[0]) + '</b></td>' + libs12.map(function (l) { return '<td class="small">' + esc(row[1](l.LibraryOptions)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody>';
+            $('#jlFrom').innerHTML = libs12.map(function (l, i) { return '<option value="' + i + '">' + esc(l.Name) + '</option>'; }).join('');
+            $('#jlTo').innerHTML = libs12.map(function (l, i) { return '<label><input type="checkbox" class="cb" value="' + i + '">' + esc(l.Name) + '</label>'; }).join('');
+        }).catch(function (e) { $('#jlTable').innerHTML = '<tbody><tr><td class="err">' + esc(e.message) + '</td></tr></tbody>'; });
+    }
+    $('#jlCopy').addEventListener('click', function () {
+        var from = libs12[+$('#jlFrom').value]; if (!from) { return; }
+        var groups = $$('#jlGroups input:checked').map(function (c) { return c.value; });
+        var targets = $$('#jlTo input:checked').map(function (c) { return libs12[+c.value]; }).filter(function (l) { return l !== from; });
+        if (!targets.length || !groups.length) { toast('Pick the libraries to copy to and what to copy.', true); return; }
+        var src = from.LibraryOptions, b = this;
+        busy(b, true, 'Copying…');
+        Promise.all(targets.map(function (t) {
+            var o = JSON.parse(JSON.stringify(t.LibraryOptions));
+            if (groups.indexOf('subs') >= 0) {
+                ['SubtitleDownloadLanguages', 'SkipSubtitlesIfEmbeddedSubtitlesPresent', 'SkipSubtitlesIfAudioTrackMatches', 'RequirePerfectSubtitleMatch', 'SaveSubtitlesWithMedia', 'DisabledSubtitleFetchers', 'SubtitleFetcherOrder', 'AllowEmbeddedSubtitles']
+                    .forEach(function (k) { if (src[k] !== undefined) { o[k] = src[k]; } });
+            }
+            if (groups.indexOf('segments') >= 0) { ['DisabledMediaSegmentProviders', 'MediaSegmentProviderOrder'].forEach(function (k) { if (src[k] !== undefined) { o[k] = src[k]; } }); }
+            if (groups.indexOf('images') >= 0) { ['EnableTrickplayImageExtraction', 'ExtractTrickplayImagesDuringLibraryScan', 'EnableChapterImageExtraction', 'ExtractChapterImagesDuringLibraryScan', 'SaveTrickplayWithMedia'].forEach(function (k) { if (src[k] !== undefined) { o[k] = src[k]; } }); }
+            if (groups.indexOf('similar') >= 0) {
+                // only for item types the target library already has settings for, so nothing else changes
+                (o.TypeOptions || []).forEach(function (tt) {
+                    var s2 = (src.TypeOptions || []).filter(function (x) { return x.Type === tt.Type; })[0];
+                    if (s2 && s2.SimilarItemProviders) { tt.SimilarItemProviders = s2.SimilarItemProviders; tt.SimilarItemProviderOrder = s2.SimilarItemProviderOrder || s2.SimilarItemProviders; }
+                });
+            }
+            return jf('POST', 'Library/VirtualFolders/LibraryOptions', null, { Id: t.ItemId, LibraryOptions: o });
+        })).then(function () { toast('Copied to ' + targets.length + ' librar' + (targets.length === 1 ? 'y' : 'ies') + '.'); loadLibs12(); })
+            .catch(function (e) { toast(e.message, true); }).finally(function () { busy(b, false); });
+    });
+    $$('.bme-tab').forEach(function (t) { if (t.dataset.tab === 'jf12') { t.addEventListener('click', function () { if (!libs12.length) { loadLibs12(); loadTargets(); } }); } });
 
     // ------------------------------------------------------------ boot
     page.addEventListener('pageshow', function () { if (!S.catalog) { init(); } else { pollCurrentJob(); } });

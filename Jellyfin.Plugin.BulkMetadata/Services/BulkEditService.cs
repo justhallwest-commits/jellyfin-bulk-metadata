@@ -95,6 +95,8 @@ public sealed class BulkEditService
     {
         _libraryManager = libraryManager;
         _providerManager = providerManager;
+        ItemMetadataAccessor.PeopleReader = i => libraryManager.GetPeople(i);
+        ItemMetadataAccessor.PeopleWriter = (i, people) => libraryManager.UpdatePeopleAsync(i, people, CancellationToken.None);
         _fileSystem = fileSystem;
         _jobs = jobs;
         _history = history;
@@ -532,6 +534,7 @@ public sealed class BulkEditService
                         ItemMetadataAccessor.Write(item, plan.After!, plan.Changed);
                         item.OnMetadataChanged();
                         await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
+                        await ItemMetadataAccessor.FlushPeopleAsync(item).ConfigureAwait(false);
 
                         entry.Items.Add(new HistoryItem
                         {

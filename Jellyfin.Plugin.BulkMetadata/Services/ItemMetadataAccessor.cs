@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.BulkMetadata.Core;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
@@ -15,6 +17,31 @@ namespace Jellyfin.Plugin.BulkMetadata.Services;
 /// </summary>
 public static class ItemMetadataAccessor
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, List<string>> _pendingAuthors = new();
+
+    /// <summary>Gets or sets how people are read (set by the service, which has the library manager).</summary>
+    public static Func<BaseItem, IEnumerable<PersonInfo>>? PeopleReader { get; set; }
+
+    /// <summary>Gets or sets how people are saved.</summary>
+    public static Func<BaseItem, List<PersonInfo>, Task>? PeopleWriter { get; set; }
+
+    private static bool IsBook(BaseItem item) => item is Book || item is AudioBook;
+
+    /// <summary>Saves authors written by <see cref="Write"/> (people are stored apart from the item).</summary>
+    /// <param name="item">Item.</param>
+    /// <returns>Task.</returns>
+    public static async Task FlushPeopleAsync(BaseItem item)
+    {
+        if (!_pendingAuthors.TryRemove(item.Id, out var authors) || PeopleReader is null || PeopleWriter is null)
+        {
+            return;
+        }
+
+        var people = PeopleReader(item).Where(p => p.Type != PersonKind.Author).ToList();
+        people.AddRange(authors.Select(a => new PersonInfo { Name = a, Type = PersonKind.Author }));
+        await PeopleWriter(item, people).ConfigureAwait(false);
+    }
+
     /// <summary>Reads the editable metadata of an item.</summary>
     /// <param name="item">Item.</param>
     /// <returns>Snapshot.</returns>
@@ -36,6 +63,23 @@ public static class ItemMetadataAccessor
         s.Scalars["PreferredMetadataLanguage"] = Clean(item.PreferredMetadataLanguage);
         s.Scalars["PreferredMetadataCountryCode"] = Clean(item.PreferredMetadataCountryCode);
         s.Scalars["IsLocked"] = item.IsLocked ? "true" : "false";
+        s.Scalars["IndexNumber"] = item.IndexNumber?.ToString(CultureInfo.InvariantCulture);
+        s.Scalars["SeriesName"] = item is Book b ? Clean(b.SeriesName) : item is AudioBook ab ? Clean(ab.SeriesName) : null;
+        if (IsBook(item) && PeopleReader is not null)
+        {
+            try
+            {
+                s.Lists["Authors"] = PeopleReader(item).Where(p => p.Type == PersonKind.Author).Select(p => p.Name).Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+            }
+            catch (Exception)
+            {
+                s.Lists["Authors"] = new List<string>();
+            }
+        }
+        else
+        {
+            s.Lists["Authors"] = new List<string>();
+        }
 
         s.Lists["Genres"] = (item.Genres ?? Array.Empty<string>()).ToList();
         s.Lists["Tags"] = (item.Tags ?? Array.Empty<string>()).ToList();
@@ -120,6 +164,27 @@ public static class ItemMetadataAccessor
                     break;
                 case "PreferredMetadataCountryCode":
                     item.PreferredMetadataCountryCode = v;
+                    break;
+                case "IndexNumber":
+                    item.IndexNumber = v is null ? null : int.Parse(v, CultureInfo.InvariantCulture);
+                    break;
+                case "SeriesName":
+                    if (item is Book book)
+                    {
+                        book.SeriesName = v;
+                    }
+                    else if (item is AudioBook audioBook)
+                    {
+                        audioBook.SeriesName = v;
+                    }
+
+                    break;
+                case "Authors":
+                    if (IsBook(item))
+                    {
+                        _pendingAuthors[item.Id] = s.GetList("Authors").ToList();
+                    }
+
                     break;
                 case "IsLocked":
                     item.IsLocked = string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
