@@ -46,6 +46,18 @@ public sealed class ItemFilter
     /// <summary>Gets or sets the maximum year.</summary>
     public int? YearTo { get; set; }
 
+    /// <summary>Gets or sets the lowest season number (0 = specials). Only seasons and episodes match when set.</summary>
+    public int? SeasonFrom { get; set; }
+
+    /// <summary>Gets or sets the highest season number.</summary>
+    public int? SeasonTo { get; set; }
+
+    /// <summary>Gets or sets the lowest episode number. Only episodes match when set.</summary>
+    public int? EpisodeFrom { get; set; }
+
+    /// <summary>Gets or sets the highest episode number.</summary>
+    public int? EpisodeTo { get; set; }
+
     /// <summary>Gets or sets fields that must be empty (field keys, or PrimaryImage/BackdropImage/LogoImage/ThumbImage).</summary>
     public List<string> Missing { get; set; } = new();
 

@@ -735,6 +735,11 @@ public sealed class BulkEditService
             return false;
         }
 
+        if (!MatchesSeasonEpisode(item, f))
+        {
+            return false;
+        }
+
         switch ((f.Locked ?? "any").ToLowerInvariant())
         {
             case "locked":
@@ -816,6 +821,56 @@ public sealed class BulkEditService
 
             snap ??= ItemMetadataAccessor.Read(item);
             if (!string.IsNullOrWhiteSpace(snap.Display(def)))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Season / episode number filter. Seasons use their own number; episodes use their season number
+    /// and episode number (multi-episode files such as E01-E02 match if any part of the range is inside).
+    /// Items without a season (movies, series…) are excluded when a season range is set, and anything
+    /// that isn't an episode is excluded when an episode range is set.
+    /// </summary>
+    private static bool MatchesSeasonEpisode(BaseItem item, ItemFilter f)
+    {
+        bool seasonSet = f.SeasonFrom.HasValue || f.SeasonTo.HasValue;
+        bool episodeSet = f.EpisodeFrom.HasValue || f.EpisodeTo.HasValue;
+        if (!seasonSet && !episodeSet)
+        {
+            return true;
+        }
+
+        if (seasonSet)
+        {
+            int? season = item switch
+            {
+                MediaBrowser.Controller.Entities.TV.Episode => item.ParentIndexNumber,
+                MediaBrowser.Controller.Entities.TV.Season => item.IndexNumber,
+                _ => null,
+            };
+            if (!season.HasValue
+                || (f.SeasonFrom.HasValue && season.Value < f.SeasonFrom.Value)
+                || (f.SeasonTo.HasValue && season.Value > f.SeasonTo.Value))
+            {
+                return false;
+            }
+        }
+
+        if (episodeSet)
+        {
+            if (item is not MediaBrowser.Controller.Entities.TV.Episode ep || !ep.IndexNumber.HasValue)
+            {
+                return false;
+            }
+
+            int first = ep.IndexNumber.Value;
+            int last = ep.IndexNumberEnd.HasValue && ep.IndexNumberEnd.Value > first ? ep.IndexNumberEnd.Value : first;
+            if ((f.EpisodeFrom.HasValue && last < f.EpisodeFrom.Value)
+                || (f.EpisodeTo.HasValue && first > f.EpisodeTo.Value))
             {
                 return false;
             }

@@ -109,6 +109,8 @@
 .bme .toast.bad{background:#7a1f1a}
 .bme .hint{font-size:.8em;opacity:.7}
 .bme .split{display:grid;grid-template-columns:1fr 1fr;gap:1em}
+.bme .bme-se{display:grid;grid-template-columns:210px 210px auto 1fr;gap:.6em 1em;align-items:start}
+@media (max-width:900px){.bme .bme-se{grid-template-columns:1fr 1fr}}
 @media (max-width:900px){.bme .split{grid-template-columns:1fr}}
 </style>
 
@@ -137,6 +139,17 @@
         </div>
         <div style="margin-top:1em"><label class="lbl">Libraries <span class="muted small">(none selected = all)</span></label><div class="chips" id="fLibs"></div></div>
         <div style="margin-top:.9em"><label class="lbl">Item types <span class="muted small">(none selected = all common types)</span></label><div class="chips" id="fTypes"></div></div>
+        <div class="bme-se" style="margin-top:.9em">
+            <div><label class="lbl">Seasons</label><div class="bme-row" style="flex-wrap:nowrap"><input type="number" min="0" id="fSeasonFrom" placeholder="from"><span class="muted">–</span><input type="number" min="0" id="fSeasonTo" placeholder="to"></div></div>
+            <div><label class="lbl">Episodes</label><div class="bme-row" style="flex-wrap:nowrap"><input type="number" min="0" id="fEpisodeFrom" placeholder="from"><span class="muted">–</span><input type="number" min="0" id="fEpisodeTo" placeholder="to"></div></div>
+            <div class="bme-row" style="align-self:end;gap:.4em">
+                <button class="chip" data-se="specials" title="Season 0">Specials</button>
+                <button class="chip" data-se="s1" title="Season 1">Season 1</button>
+                <button class="chip" data-se="premieres" title="Episode 1 of every season">Season premieres</button>
+                <button class="chip" data-se="clear">Clear</button>
+            </div>
+            <div class="hint" style="align-self:end">Season filter shows only seasons &amp; episodes; episode filter shows only episodes. Leave one side blank for "and up" / "and below". 0 = specials.</div>
+        </div>
 
         <details class="more" id="fMore">
             <summary>More filters <span class="muted small" id="fMoreCount"></span></summary>
@@ -471,6 +484,15 @@
     }
 
     // ------------------------------------------------------------ FIND
+    function num(sel) { var v = $(sel).value.trim(); if (v === '') { return null; } var n = parseInt(v, 10); return isNaN(n) || n < 0 ? null : n; }
+    function setSE(sf, st, ef, et) { $('#fSeasonFrom').value = sf; $('#fSeasonTo').value = st; $('#fEpisodeFrom').value = ef; $('#fEpisodeTo').value = et; }
+    $$('[data-se]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            ({ specials: function () { setSE(0, 0, '', ''); }, s1: function () { setSE(1, 1, '', ''); }, premieres: function () { setSE('', '', 1, 1); }, clear: function () { setSE('', '', '', ''); } })[b.dataset.se]();
+            search(0);
+        });
+    });
+    ['#fSeasonFrom', '#fSeasonTo', '#fEpisodeFrom', '#fEpisodeTo'].forEach(function (s) { $(s).addEventListener('keydown', function (e) { if (e.key === 'Enter') { search(0); } }); });
     function readFilter() {
         return {
             LibraryIds: Array.from(S.libs), ItemTypes: Array.from(S.types),
@@ -478,6 +500,7 @@
             HasGenres: splitList($('#fGenres').value), HasTags: splitList($('#fTags').value), LacksTags: splitList($('#fLacksTags').value),
             HasStudios: splitList($('#fStudios').value), OfficialRatings: splitList($('#fRatings').value),
             YearFrom: $('#fYearFrom').value ? parseInt($('#fYearFrom').value, 10) : null, YearTo: $('#fYearTo').value ? parseInt($('#fYearTo').value, 10) : null,
+            SeasonFrom: num('#fSeasonFrom'), SeasonTo: num('#fSeasonTo'), EpisodeFrom: num('#fEpisodeFrom'), EpisodeTo: num('#fEpisodeTo'),
             FieldKey: $('#fFieldKey').value || null, FieldQuery: $('#fFieldQuery').value.trim() || null,
             Missing: Array.from(S.missing), Locked: $('#fLocked').value,
             SortBy: $('#fSort').value, SortDesc: $('#fDesc').checked
@@ -504,7 +527,7 @@
     ['#fText', '#fSeries', '#fFieldQuery'].forEach(function (s) { $(s).addEventListener('keydown', function (e) { if (e.key === 'Enter') { search(0); } }); });
     ['#fSort', '#fDesc', '#fPageSize'].forEach(function (s) { $(s).addEventListener('change', function () { if (S.lastFilter) { search(0); } }); });
     $('#bReset').addEventListener('click', function () {
-        ['#fText', '#fSeries', '#fGenres', '#fTags', '#fLacksTags', '#fStudios', '#fRatings', '#fYearFrom', '#fYearTo', '#fFieldQuery'].forEach(function (s) { $(s).value = ''; });
+        ['#fText', '#fSeries', '#fGenres', '#fTags', '#fLacksTags', '#fStudios', '#fRatings', '#fYearFrom', '#fYearTo', '#fFieldQuery', '#fSeasonFrom', '#fSeasonTo', '#fEpisodeFrom', '#fEpisodeTo'].forEach(function (s) { $(s).value = ''; });
         $('#fFieldKey').value = ''; $('#fLocked').value = 'any';
         S.libs.clear(); S.types.clear(); S.missing.clear(); $$('#fLibs .chip, #fTypes .chip, #fMissing .chip').forEach(function (c) { c.classList.remove('on'); });
         updateMoreCount();
